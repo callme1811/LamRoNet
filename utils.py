@@ -110,35 +110,37 @@ def pillow_enhance(input_path: str, output_path: str, scale: int = 4) -> str:
         ImageOps,
     )
 
-    img = Image.open(input_path).convert("RGB")
+    img = Image.open(input_path).convert("L")
 
-    # cân bằng sáng nhẹ
+    # auto contrast nhẹ
     img = ImageOps.autocontrast(img, cutoff=1)
 
     # upscale trước
     new_size = (img.width * 4, img.height * 4)
-    img = img.resize(new_size, Image.Resampling.LANCZOS)
+    img = img.resize(new_size, Image.Resampling.BICUBIC)
 
-    # sharpen vừa phải
+    # khử blur nhẹ
     img = img.filter(
         ImageFilter.UnsharpMask(
-            radius=1.2,
+            radius=1.0,
             percent=180,
-            threshold=2,
+            threshold=3,
         )
     )
 
-    # clarity nhẹ
-    img = ImageEnhance.Sharpness(img).enhance(2.2)
+    # edge nhẹ để rõ waveform
+    img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
 
-    # contrast nhẹ thôi
+    # sharpen vừa đủ
+    img = ImageEnhance.Sharpness(img).enhance(2.8)
+
+    # contrast rất nhẹ để không đen lưới
     img = ImageEnhance.Contrast(img).enhance(1.08)
 
+    img = img.convert("RGB")
     img.save(output_path, "PNG")
 
-    return "Natural ECG enhancement"
-
-
+    return "ECG clarity enhancement"
 def run_realesrgan(
     input_path: str,
     output_path: str,
