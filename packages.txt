@@ -1,1 +1,4 @@
 libvulkan1
+mesa-vulkan-drivers
+gcc
+libvulkan-dev

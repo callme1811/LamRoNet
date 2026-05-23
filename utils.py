@@ -146,6 +146,68 @@ def download_realesrgan_binary(status_callback=None) -> Path:
         
     return exec_path
 
+def compile_vk_spoof() -> Path:
+    """
+    On Linux, compiles a tiny C shared library that hooks Vulkan physical device properties
+    to spoof CPU devices (like lavapipe/llvmpipe) as discrete GPUs.
+    This prevents NCNN from skipping them and throwing "invalid gpu device" (exit code 255).
+    """
+    spoof_c_path = BIN_DIR / "vk_spoof.c"
+    spoof_so_path = BIN_DIR / "libvk_spoof.so"
+    
+    if spoof_so_path.exists():
+        return spoof_so_path
+        
+    c_code = """#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <vulkan/vulkan.h>
+
+void vkGetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties)(VkPhysicalDevice, VkPhysicalDeviceProperties*);
+    PFN_vkGetPhysicalDeviceProperties real_func = (PFN_vkGetPhysicalDeviceProperties)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties");
+    if (real_func) {
+        real_func(physicalDevice, pProperties);
+    }
+    if (pProperties && pProperties->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+        pProperties->deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    }
+}
+
+void vkGetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties2)(VkPhysicalDevice, VkPhysicalDeviceProperties2*);
+    PFN_vkGetPhysicalDeviceProperties2 real_func = (PFN_vkGetPhysicalDeviceProperties2)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties2");
+    if (real_func) {
+        real_func(physicalDevice, pProperties);
+    }
+    if (pProperties && pProperties->properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+        pProperties->properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    }
+}
+
+void vkGetPhysicalDeviceProperties2KHR(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties2KHR)(VkPhysicalDevice, VkPhysicalDeviceProperties2*);
+    PFN_vkGetPhysicalDeviceProperties2KHR real_func = (PFN_vkGetPhysicalDeviceProperties2KHR)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties2KHR");
+    if (real_func) {
+        real_func(physicalDevice, pProperties);
+    }
+    if (pProperties && pProperties->properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+        pProperties->properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    }
+}
+"""
+    try:
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+        with open(spoof_c_path, "w", encoding="utf-8") as f:
+            f.write(c_code)
+            
+        # Compile using gcc
+        cmd = ["gcc", "-shared", "-fPIC", "-o", str(spoof_so_path), str(spoof_c_path), "-ldl"]
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        return spoof_so_path
+    except Exception:
+        # If compilation fails, return None
+        return None
+
 def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesrgan-x4plus", tile_size: int = 400, scale: int = 4) -> bool:
     """
     Runs the Real-ESRGAN NCNN Vulkan binary via Python subprocess.
@@ -160,10 +222,11 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
     # Environment copy to configure Vulkan settings
     env = os.environ.copy()
     if os.name != 'nt':
-        # Bypass buggy Mesa llvmpipe Vulkan software rendering drivers in headless Linux environments (Streamlit Cloud)
-        # by forcing the Vulkan loader to find 0 devices. This forces Real-ESRGAN to execute natively and cleanly on CPU.
-        env["VK_ICD_FILENAMES"] = ""
-        env["VK_DRIVER_FILES"] = ""
+        # Compile and load our Vulkan deviceType spoofer hook
+        # to prevent NCNN from rejecting lavapipe as an "invalid gpu device" and exiting with 255.
+        spoof_lib_path = compile_vk_spoof()
+        if spoof_lib_path and spoof_lib_path.exists():
+            env["LD_PRELOAD"] = str(spoof_lib_path)
     
     # Check if we are running inside a Streamlit Cloud container (CPU-only virtual Linux)
     # If yes, we directly execute CPU mode (-g -1) to prevent the Vulkan device scan from hanging indefinitely.
