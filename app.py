@@ -94,8 +94,20 @@ tile_size = st.sidebar.slider(
 auto_resize_cloud = st.sidebar.checkbox(
     "Tối ưu kích thước trên Cloud",
     value=(os.name != 'nt'),
-    help="Tự động thu nhỏ ảnh gốc về chiều rộng tối đa 1000px nếu đang chạy trên CPU đám mây. Giúp tăng tốc độ xử lý lên gấp 5-10 lần mà vẫn bảo đảm đầu ra sắc nét."
+    help="Tự động thu nhỏ ảnh gốc nếu đang chạy trên CPU đám mây. Giúp tăng tốc độ xử lý lên gấp 5-10 lần mà vẫn bảo đảm đầu ra sắc nét."
 )
+
+if auto_resize_cloud:
+    cloud_resolution = st.sidebar.selectbox(
+        "Độ phân giải xử lý",
+        options=["360px (Siêu nhanh: 2-4 giây)", "480px (Nhanh: 5-8 giây)", "640px (Tiêu chuẩn: 10-20 giây)"],
+        index=1,
+        help="Độ rộng tối đa của ảnh khi xử lý trên CPU đám mây. Độ rộng nhỏ hơn sẽ tính toán nhanh hơn rất nhiều."
+    )
+    # Parse selected width
+    max_cloud_width = int(cloud_resolution.split("px")[0])
+else:
+    max_cloud_width = 1000
 
 st.sidebar.markdown("<div class='divider' style='margin: 16px 0;'></div>", unsafe_allow_html=True)
 
@@ -148,14 +160,13 @@ with col_upload:
         TEMP_DIR.mkdir(parents=True, exist_ok=True)
         
         # Apply Cloud CPU Downscale Optimization if enabled
-        # Downscale target to 640px to speed up CPU computation by 5x (processing under 10 seconds)
-        if auto_resize_cloud and orig_image.size[0] > 640:
-            max_width = 640
-            w_percent = (max_width / float(orig_image.size[0]))
+        # Downscale target to user selected resolution to speed up CPU computation by 5-10x
+        if auto_resize_cloud and orig_image.size[0] > max_cloud_width:
+            w_percent = (max_cloud_width / float(orig_image.size[0]))
             h_size = int((float(orig_image.size[1]) * float(w_percent)))
             # Use high-quality Resampling filter
             resample_filter = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.ANTIALIAS
-            processed_orig_image = orig_image.resize((max_width, h_size), resample_filter)
+            processed_orig_image = orig_image.resize((max_cloud_width, h_size), resample_filter)
         else:
             processed_orig_image = orig_image
             
