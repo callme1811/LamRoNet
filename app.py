@@ -3,7 +3,7 @@ import time
 import os
 from pathlib import Path
 from PIL import Image
-from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path
+from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path, BIN_DIR
 
 # Set Streamlit Page Configurations
 st.set_page_config(
@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # App version
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 
 # Function to load external CSS styles
 def load_css(file_name):
@@ -122,8 +122,17 @@ else:
     os_display = "Linux (Streamlit Cloud) ☁️" if sys.platform != "darwin" else "macOS 💻"
     acceleration_display = "Vulkan GPU / Tự động sang CPU ⚙️"
 
+    spoofer_status = ""
+    if os.name != 'nt':
+        spoof_so = BIN_DIR / "libvk_spoof.so"
+        if spoof_so.exists():
+            spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Sẵn sàng (CPU Mode)"
+        else:
+            spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Chưa sẵn sàng"
+
 st.sidebar.info(f"💻 Hệ điều hành: {os_display}\n"
                 f"⚙️ Gia tốc: {acceleration_display}\n"
+                f"📦 Phiên bản: {APP_VERSION}{spoofer_status}\n"
                 "📊 Tự động tối ưu hóa: Có (Tiling)")
 
 executable_found = get_executable_path() is not None
