@@ -21,9 +21,18 @@ else:
     BIN_DIR = WORK_DIR / "bin"
     TEMP_DIR = WORK_DIR / "temp"
 
-# Ensure folders exist
-BIN_DIR.mkdir(parents=True, exist_ok=True)
-TEMP_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure folders exist with robust local fallback if /tmp permissions fail
+try:
+    BIN_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    BIN_DIR = BASE_DIR / "bin"
+    BIN_DIR.mkdir(parents=True, exist_ok=True)
+
+try:
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    TEMP_DIR = BASE_DIR / "temp"
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 def get_executable_name() -> str:
     """Return the platform-specific executable name."""
