@@ -13,6 +13,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# App version
+APP_VERSION = "1.0.2"
+
 # Function to load external CSS styles
 def load_css(file_name):
     css_path = Path(__file__).resolve().parent / file_name
