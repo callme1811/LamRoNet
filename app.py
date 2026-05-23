@@ -52,14 +52,22 @@ st.sidebar.markdown("""
 model_choice = st.sidebar.selectbox(
     "Mô hình AI (Model Selection)",
     options=[
+        "realesr-animevideov3",
         "realesrgan-x4plus-anime",
-        "realesrgan-x4plus",
-        "realesr-animevideov3"
+        "realesrgan-x4plus"
     ],
     index=0,
-    help="• 'x4plus-anime': Tối ưu nhất cho các nét vẽ và đường sóng, làm mịn nhiễu hạt giấy cực tốt.\n"
-         "• 'x4plus': Chi tiết tối đa cho văn bản và các kết cấu phức tạp.\n"
-         "• 'animevideov3': Rất nhanh và nhẹ."
+    help="• 'animevideov3': SIÊU NHANH & NHẸ (Khuyên dùng khi chạy trên Cloud để tránh chờ lâu).\n"
+         "• 'x4plus-anime': Rất tốt cho nét vẽ mảnh và đường sóng, làm mịn giấy tốt.\n"
+         "• 'x4plus': Chi tiết tối đa cho chữ và đường lưới."
+)
+
+scale_choice = st.sidebar.selectbox(
+    "Tỷ lệ phóng đại (Scale)",
+    options=[2, 3, 4],
+    index=0,
+    help="• Chọn 2x hoặc 3x để phóng đại vừa phải nhưng xử lý nhanh gấp 2-4 lần.\n"
+         "• 4x cho chi tiết cao nhất nhưng chạy lâu nhất."
 )
 
 tile_size = st.sidebar.slider(
@@ -68,8 +76,7 @@ tile_size = st.sidebar.slider(
     max_value=800,
     value=400,
     step=50,
-    help="Chia nhỏ ảnh khi xử lý để tránh tràn bộ nhớ VRAM của card đồ họa. "
-         "Giảm xuống (ví dụ: 200, 300) nếu máy bị treo hoặc báo lỗi tràn bộ nhớ (Out of Memory)."
+    help="Chia nhỏ ảnh khi xử lý để tránh tràn bộ nhớ VRAM. Giảm xuống (ví dụ: 200, 300) nếu chạy trên CPU chậm hoặc bị lỗi."
 )
 
 st.sidebar.markdown("<div class='divider' style='margin: 16px 0;'></div>", unsafe_allow_html=True)
@@ -135,6 +142,13 @@ with col_upload:
             </div>
         """, unsafe_allow_html=True)
         
+        # Display optimization tips if running on CPU-mode (Cloud)
+        if os.name != 'nt':
+            st.warning("ℹ️ **Mẹo tăng tốc trên Cloud CPU:**\n"
+                       "Để giảm thời gian chờ xử lý xuống dưới **10-15 giây**:\n"
+                       "1. Chọn Model: **realesr-animevideov3**\n"
+                       "2. Chọn Scale: **2x** hoặc **3x**")
+        
         # Upscale button
         run_btn = st.button("🚀 BẮT ĐẦU TĂNG NÉT BẰNG AI")
     else:
@@ -167,12 +181,13 @@ with col_view:
                 # Step 2: Running Real-ESRGAN
                 update_progress(f"Mô hình AI đang vẽ lại đường nét (Đang xử lý bằng Vulkan GPU)...", 0.6)
                 
-                # We execute the process
+                # We execute the process with scale parameter
                 run_realesrgan(
                     input_path=str(input_img_path),
                     output_path=str(output_img_path),
                     model_name=model_choice,
-                    tile_size=tile_size
+                    tile_size=tile_size,
+                    scale=scale_choice
                 )
                 
                 t_end = time.time()
@@ -281,7 +296,7 @@ with col_view:
                         <h4 style="margin: 4px 0 0 0; color: #E2E8F0 !important;">{w} x {h}</h4>
                     </div>
                     <div style="flex: 1; min-width: 200px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; text-align: center;">
-                        <span style="font-size: 0.75rem; color: #06B6D4; text-transform: uppercase;">Độ phân giải nâng cấp (4x)</span>
+                        <span style="font-size: 0.75rem; color: #06B6D4; text-transform: uppercase;">Độ phân giải nâng cấp ({scale_choice}x)</span>
                         <h4 style="margin: 4px 0 0 0; color: #22D3EE !important;">{w_enh} x {h_enh}</h4>
                     </div>
                     <div style="flex: 1; min-width: 200px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; text-align: center;">

@@ -96,10 +96,17 @@ def download_realesrgan_binary(status_callback=None) -> Path:
         
     return exec_path
 
-def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesrgan-x4plus", tile_size: int = 400) -> bool:
+def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesrgan-x4plus", tile_size: int = 400, scale: int = 4) -> bool:
     """
     Runs the Real-ESRGAN NCNN Vulkan binary via Python subprocess.
     Automatically falls back to CPU mode if Vulkan GPU acceleration is unavailable (e.g. on Streamlit Cloud).
+    
+    Args:
+        input_path: Absolute path to the input image file.
+        output_path: Absolute path to save the enhanced upscaled image.
+        model_name: Name of the AI model.
+        tile_size: The tiling size for chunked inference.
+        scale: Upscale ratio (can be 2, 3, or 4).
     """
     exec_path = get_executable_path()
     if not exec_path or not exec_path.exists():
@@ -113,6 +120,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
         "-i", str(input_path),
         "-o", str(output_path),
         "-n", model_name,
+        "-s", str(scale),
         "-t", str(tile_size),
         "-g", "0"
     ]
@@ -142,6 +150,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
                 "-i", str(input_path),
                 "-o", str(output_path),
                 "-n", model_name,
+                "-s", str(scale),
                 "-t", str(tile_size),
                 "-g", "-1"  # CPU Mode
             ]
