@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-APP_VERSION = "1.0.5"
+APP_VERSION = "1.0.6"
 
 
 def load_css(file_name: str):
@@ -38,7 +38,7 @@ st.markdown(
     <div class="heartbeat-container">
         <span class="heart-icon">❤️</span>
         <div style="flex-grow: 0;">
-            <span class="badge-teal">AnimeVideoV3 Super-Resolution</span>
+            <span class="badge-teal">Real-ESRGAN x4plus Pipeline</span>
             <h1 style='margin: 0; padding-top: 4px; font-size: 2.2rem; background: linear-gradient(90deg, #FFFFFF 0%, #06B6D4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
                 ECG ENHANCER - TĂNG ĐỘ NÉT ĐIỆN TIM
             </h1>
@@ -46,7 +46,7 @@ st.markdown(
         <div class="pulse-line"></div>
     </div>
     <p style='color: #94A3B8; margin-top: -8px; margin-bottom: 24px; font-size: 1.05rem;'>
-        Tăng độ nét ảnh điện tim bằng model <b>realesr-animevideov3</b>. Nếu Streamlit Cloud không hỗ trợ Vulkan, app tự chuyển sang chế độ tăng nét bằng Pillow.
+        Mặc định dùng <b>realesrgan-x4plus</b>. Nếu Streamlit Cloud không hỗ trợ Vulkan GPU, app tự chuyển sang chế độ tăng nét x4 bằng Pillow.
     </p>
     <div class="divider"></div>
     """,
@@ -56,8 +56,8 @@ st.markdown(
 st.sidebar.markdown(
     """
     <div style='text-align: center; margin-bottom: 20px;'>
-        <h2 style='margin: 0; color: #06B6D4 !important; font-size: 1.4rem;'>CẤU HÌNH XỬ LÝ</h2>
-        <span style='color: #64748B; font-size: 0.85rem;'>Tối ưu cho Streamlit Cloud</span>
+        <h2 style='margin: 0; color: #06B6D4 !important; font-size: 1.4rem;'>CẤU HÌNH REAL-ESRGAN</h2>
+        <span style='color: #64748B; font-size: 0.85rem;'>Ưu tiên model x4plus</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -66,26 +66,15 @@ st.sidebar.markdown(
 model_choice = st.sidebar.selectbox(
     "Mô hình xử lý",
     options=[
-        "realesr-animevideov3",
-        "realesrgan-x4plus-anime",
         "realesrgan-x4plus",
+        "realesrgan-x4plus-anime",
+        "realesr-animevideov3",
     ],
     index=0,
 )
 
-if model_choice == "realesr-animevideov3":
-    scale_options = [2]
-    scale_help = "AnimeVideoV3 chạy ổn nhất ở 2x trên Cloud."
-else:
-    scale_options = [4]
-    scale_help = "Model x4plus yêu cầu 4x."
-
-scale_choice = st.sidebar.selectbox(
-    "Tỷ lệ phóng đại",
-    options=scale_options,
-    index=0,
-    help=scale_help,
-)
+scale_choice = 4
+st.sidebar.info("🔎 Tỷ lệ phóng đại: 4x")
 
 tile_size = st.sidebar.slider(
     "Tile Size",
@@ -93,7 +82,7 @@ tile_size = st.sidebar.slider(
     max_value=400,
     value=100,
     step=50,
-    help="Cloud nên để 50–100 để giảm lỗi bộ nhớ.",
+    help="Streamlit Cloud nên để 50–100.",
 )
 
 auto_resize_cloud = st.sidebar.checkbox(
@@ -104,11 +93,7 @@ auto_resize_cloud = st.sidebar.checkbox(
 if auto_resize_cloud:
     cloud_resolution = st.sidebar.selectbox(
         "Độ rộng xử lý tối đa",
-        options=[
-            "360px",
-            "480px",
-            "640px",
-        ],
+        options=["360px", "480px", "640px"],
         index=1,
     )
     max_cloud_width = int(cloud_resolution.replace("px", ""))
@@ -120,10 +105,10 @@ st.sidebar.markdown("### ⚡ Trạng Thái Hệ Thống")
 
 if os.name == "nt":
     os_display = "Windows"
-    mode_display = "Real-ESRGAN Vulkan"
+    mode_display = "Real-ESRGAN Vulkan GPU"
 else:
     os_display = "Linux / Streamlit Cloud" if sys.platform != "darwin" else "macOS"
-    mode_display = "Real-ESRGAN nếu Vulkan chạy được, nếu không fallback Pillow"
+    mode_display = "Thử Real-ESRGAN, lỗi Vulkan thì fallback Pillow x4"
 
 st.sidebar.info(
     f"💻 Hệ điều hành: {os_display}\n"
@@ -209,7 +194,7 @@ with col_view:
                 update_progress("Đang kiểm tra/tải Real-ESRGAN...", 0.15)
                 download_realesrgan_binary(status_callback=update_progress)
 
-                update_progress("Đang xử lý bằng animevideov3...", 0.65)
+                update_progress("Đang xử lý bằng realesrgan-x4plus...", 0.65)
                 result_mode = run_realesrgan(
                     input_path=str(input_img_path),
                     output_path=str(output_img_path),
@@ -325,6 +310,5 @@ with col_view:
                 file_name=f"ECG_Enhanced_{Path(uploaded_file.name).stem}.png",
                 mime="image/png",
             )
-
         else:
             st.info("👆 Bấm nút xử lý để xem kết quả.")

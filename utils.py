@@ -7,7 +7,7 @@ import tempfile
 import getpass
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -98,32 +98,33 @@ def download_realesrgan_binary(status_callback=None):
     return exec_path
 
 
-def pillow_enhance(input_path: str, output_path: str, scale: int = 2) -> str:
+def pillow_enhance(input_path: str, output_path: str, scale: int = 4) -> str:
     img = Image.open(input_path).convert("RGB")
 
-    scale = max(1, int(scale))
-    new_size = (img.width * scale, img.height * scale)
+    img = ImageOps.autocontrast(img, cutoff=1)
+    img = ImageEnhance.Contrast(img).enhance(1.55)
 
+    new_size = (img.width * 4, img.height * 4)
     img = img.resize(new_size, Image.Resampling.LANCZOS)
 
-    img = ImageEnhance.Contrast(img).enhance(1.55)
-    img = ImageEnhance.Sharpness(img).enhance(5.0)
-    img = img.filter(ImageFilter.UnsharpMask(radius=2.0, percent=300, threshold=2))
+    img = ImageEnhance.Sharpness(img).enhance(6.0)
+    img = img.filter(ImageFilter.UnsharpMask(radius=1.4, percent=360, threshold=1))
     img = img.filter(ImageFilter.SHARPEN)
 
+    img = ImageEnhance.Contrast(img).enhance(1.25)
+
     img.save(output_path, "PNG")
-    return "Pillow fallback"
+    return "Pillow fallback x4"
 
 
 def run_realesrgan(
     input_path: str,
     output_path: str,
-    model_name: str = "realesr-animevideov3",
+    model_name: str = "realesrgan-x4plus",
     tile_size: int = 100,
-    scale: int = 2,
+    scale: int = 4,
 ) -> str:
-    if model_name == "realesr-animevideov3":
-        scale = 2
+    scale = 4
 
     exec_path = get_executable_path()
 
@@ -137,7 +138,7 @@ def run_realesrgan(
         "-i", str(input_path),
         "-o", str(output_path),
         "-n", str(model_name),
-        "-s", str(scale),
+        "-s", "4",
         "-t", str(tile_size),
         "-g", "-1",
     ]
@@ -152,12 +153,12 @@ def run_realesrgan(
     )
 
     if process.returncode == 0 and Path(output_path).exists():
-        return f"Real-ESRGAN {model_name}"
+        return f"Real-ESRGAN {model_name} x4"
 
     error_msg = process.stderr or process.stdout or ""
 
     if "invalid gpu device" in error_msg.lower() or process.returncode == 255:
-        pillow_enhance(input_path, output_path, scale=scale)
-        return "Pillow fallback vì Cloud không hỗ trợ Vulkan GPU"
+        pillow_enhance(input_path, output_path, scale=4)
+        return "Pillow fallback x4 vì Cloud không hỗ trợ Vulkan GPU"
 
     raise RuntimeError(f"Real-ESRGAN failed code {process.returncode}: {error_msg}")
