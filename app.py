@@ -115,20 +115,20 @@ st.sidebar.markdown("<div class='divider' style='margin: 16px 0;'></div>", unsaf
 st.sidebar.markdown("### ⚡ Trạng Thái Hệ Thống")
 
 import sys
+spoofer_status = ""
+
 if os.name == 'nt':
     os_display = "Windows"
     acceleration_display = "Vulkan GPU (NVIDIA/AMD) 🚀"
 else:
     os_display = "Linux (Streamlit Cloud) ☁️" if sys.platform != "darwin" else "macOS 💻"
     acceleration_display = "Vulkan GPU / Tự động sang CPU ⚙️"
-
-    spoofer_status = ""
-    if os.name != 'nt':
-        spoof_so = BIN_DIR / "libvk_spoof.so"
-        if spoof_so.exists():
-            spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Sẵn sàng (CPU Mode)"
-        else:
-            spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Chưa sẵn sàng"
+    
+    spoof_so = BIN_DIR / "libvk_spoof.so"
+    if spoof_so.exists():
+        spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Sẵn sàng (CPU Mode)"
+    else:
+        spoofer_status = "\n🛡️ Bộ giả lập Vulkan: Chưa sẵn sàng"
 
 st.sidebar.info(f"💻 Hệ điều hành: {os_display}\n"
                 f"⚙️ Gia tốc: {acceleration_display}\n"
