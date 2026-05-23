@@ -1,16 +1,27 @@
 import os
 import sys
 import zipfile
+import shutil
 import subprocess
 import requests
 from pathlib import Path
 
-# Base directories
+# Base directory (Git repo mount, might be read-only on Streamlit Cloud)
 BASE_DIR = Path(__file__).resolve().parent
-BIN_DIR = BASE_DIR / "bin"
-TEMP_DIR = BASE_DIR / "temp"
 
-# Ensure directories exist
+# Define writable directories
+# On Windows, we use local folders next to the script.
+# On Linux/Cloud, we use /tmp/ which is guaranteed to be writable and support executable permissions.
+if os.name == 'nt':
+    WORK_DIR = BASE_DIR
+    BIN_DIR = WORK_DIR / "bin"
+    TEMP_DIR = WORK_DIR / "temp"
+else:
+    WORK_DIR = Path("/tmp/ecg_enhancer")
+    BIN_DIR = WORK_DIR / "bin"
+    TEMP_DIR = WORK_DIR / "temp"
+
+# Ensure folders exist
 BIN_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -32,12 +43,15 @@ def download_realesrgan_binary(status_callback=None) -> Path:
     """
     Downloads and extracts the pre-compiled platform-specific realesrgan-ncnn-vulkan zip.
     Supports Windows, Linux (Ubuntu), and macOS.
+    On Linux, it also copies the models directory from the repository mount to the writable folder.
     """
     exec_path = get_executable_path()
     if exec_path and exec_path.exists():
-        # Ensure correct executable permissions on Unix-based systems
         if os.name != 'nt':
-            os.chmod(exec_path, 0o755)
+            try:
+                os.chmod(exec_path, 0o755)
+            except Exception:
+                pass
         return exec_path
 
     # Determine platform-specific binary ZIP URL
@@ -52,14 +66,14 @@ def download_realesrgan_binary(status_callback=None) -> Path:
     zip_path = BIN_DIR / "realesrgan-binary.zip"
 
     if status_callback:
-        status_callback(f"Downloading Real-ESRGAN NCNN Vulkan for {sys.platform} (approx. 25-45MB)...", 0.1)
+        status_callback(f"Initializing Real-ESRGAN for {sys.platform} (Downloading approx. 25-45MB to writable temp)...", 0.1)
 
-    # Download with streaming
+    # Download ZIP with streaming
     response = requests.get(url, stream=True)
     response.raise_for_status()
     
     total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024 * 128  # 128 KB
+    block_size = 1024 * 128
     downloaded = 0
     
     with open(zip_path, 'wb') as f:
@@ -72,9 +86,9 @@ def download_realesrgan_binary(status_callback=None) -> Path:
                     status_callback(f"Downloading: {downloaded / (1024*1024):.2f}MB / {total_size / (1024*1024):.2f}MB...", min(progress, 0.8))
 
     if status_callback:
-        status_callback("Extracting platform-specific archive...", 0.85)
+        status_callback("Extracting archive into writable environment...", 0.85)
 
-    # Extract ZIP
+    # Extract ZIP into BIN_DIR
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(BIN_DIR)
 
@@ -82,14 +96,29 @@ def download_realesrgan_binary(status_callback=None) -> Path:
     if zip_path.exists():
         zip_path.unlink()
 
-    # Locate executable
+    # Find the executable
     exec_path = get_executable_path()
     if not exec_path:
         raise FileNotFoundError(f"Could not find '{get_executable_name()}' inside the extracted package.")
 
     # Grant execution permissions on Linux/macOS
     if os.name != 'nt':
-        os.chmod(exec_path, 0o755)
+        try:
+            os.chmod(exec_path, 0o755)
+        except Exception as e:
+            if status_callback:
+                status_callback(f"Warning: chmod failed: {str(e)}", 0.9)
+
+    # Copy models from repository mount to BIN_DIR/models if they exist in repo and are missing in temp
+    repo_models_dir = BASE_DIR / "bin" / "models"
+    dest_models_dir = exec_path.parent / "models"
+    if repo_models_dir.exists() and not dest_models_dir.exists():
+        if status_callback:
+            status_callback("Copying model weights from repository mount...", 0.95)
+        try:
+            shutil.copytree(repo_models_dir, dest_models_dir)
+        except Exception:
+            pass  # Fallback to the downloaded model files in the ZIP if copying fails
 
     if status_callback:
         status_callback("Real-ESRGAN setup completed successfully!", 1.0)
@@ -99,14 +128,7 @@ def download_realesrgan_binary(status_callback=None) -> Path:
 def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesrgan-x4plus", tile_size: int = 400, scale: int = 4) -> bool:
     """
     Runs the Real-ESRGAN NCNN Vulkan binary via Python subprocess.
-    Automatically falls back to CPU mode if Vulkan GPU acceleration is unavailable (e.g. on Streamlit Cloud).
-    
-    Args:
-        input_path: Absolute path to the input image file.
-        output_path: Absolute path to save the enhanced upscaled image.
-        model_name: Name of the AI model.
-        tile_size: The tiling size for chunked inference.
-        scale: Upscale ratio (can be 2, 3, or 4).
+    Automatically falls back to CPU mode if Vulkan GPU acceleration is unavailable.
     """
     exec_path = get_executable_path()
     if not exec_path or not exec_path.exists():
@@ -137,13 +159,10 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
 
     if process.returncode != 0:
         error_msg = process.stderr or process.stdout or ""
-        
-        # Check if the failure is due to lack of GPU/Vulkan drivers (very typical on cloud containers)
-        # We automatically fall back to CPU mode (-g -1)
         low_err = error_msg.lower()
         is_gpu_err = any(k in low_err for k in ["gpu", "vulkan", "device", "failed", "driver", "openvk", "vk"])
         
-        if is_gpu_err or process.returncode == 255 or process.returncode == 139:
+        if is_gpu_err or process.returncode in [255, 139, 127]:
             # Rerun with CPU mode (-g -1)
             cmd_cpu = [
                 str(exec_path),
