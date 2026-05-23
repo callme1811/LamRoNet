@@ -157,7 +157,37 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
 
     exec_dir = exec_path.parent
     
-    # Try GPU first
+    # Check if we are running inside a Streamlit Cloud container (CPU-only virtual Linux)
+    # If yes, we directly execute CPU mode (-g -1) to prevent the Vulkan device scan from hanging indefinitely.
+    is_streamlit_cloud = (os.name != 'nt' and ("/mount/src/" in str(BASE_DIR) or os.environ.get("STREAMLIT_SHARING_ORGANIZATION")))
+    
+    if is_streamlit_cloud:
+        cmd_cpu = [
+            str(exec_path),
+            "-i", str(input_path),
+            "-o", str(output_path),
+            "-n", model_name,
+            "-s", str(scale),
+            "-t", str(tile_size),
+            "-g", "-1"  # CPU Mode
+        ]
+        
+        process_cpu = subprocess.run(
+            cmd_cpu,
+            cwd=str(exec_dir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+        
+        if process_cpu.returncode == 0:
+            return True
+        else:
+            cpu_error = process_cpu.stderr or process_cpu.stdout or "Unknown CPU error"
+            raise RuntimeError(f"Real-ESRGAN execution failed on CPU mode (code {process_cpu.returncode}): {cpu_error}")
+
+    # --- Standard Local GPU with CPU fallback ---
     cmd_gpu = [
         str(exec_path),
         "-i", str(input_path),
