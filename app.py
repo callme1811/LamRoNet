@@ -76,8 +76,17 @@ st.sidebar.markdown("<div class='divider' style='margin: 16px 0;'></div>", unsaf
 
 # System Diagnostics Display in Sidebar
 st.sidebar.markdown("### ⚡ Trạng Thái Hệ Thống")
-st.sidebar.info("💻 Hệ điều hành: Windows\n"
-                "⚙️ Gia tốc: Vulkan GPU (NVIDIA)\n"
+
+import sys
+if os.name == 'nt':
+    os_display = "Windows"
+    acceleration_display = "Vulkan GPU (NVIDIA/AMD) 🚀"
+else:
+    os_display = "Linux (Streamlit Cloud) ☁️" if sys.platform != "darwin" else "macOS 💻"
+    acceleration_display = "Vulkan GPU / Tự động sang CPU ⚙️"
+
+st.sidebar.info(f"💻 Hệ điều hành: {os_display}\n"
+                f"⚙️ Gia tốc: {acceleration_display}\n"
                 "📊 Tự động tối ưu hóa: Có (Tiling)")
 
 executable_found = get_executable_path() is not None
