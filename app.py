@@ -3,7 +3,7 @@ import time
 import os
 from pathlib import Path
 from PIL import Image
-from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path, BIN_DIR
+from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path, BIN_DIR, compile_vk_spoof
 
 # Set Streamlit Page Configurations
 st.set_page_config(
@@ -15,6 +15,13 @@ st.set_page_config(
 
 # App version
 APP_VERSION = "1.0.3"
+
+# Pre-compile Vulkan spoofer hook on startup for Linux/Cloud
+if os.name != 'nt':
+    try:
+        compile_vk_spoof()
+    except Exception as e:
+        st.sidebar.error(f"❌ Lỗi khởi tạo Vulkan Spoofer: {str(e)}")
 
 # Function to load external CSS styles
 def load_css(file_name):
