@@ -3,7 +3,7 @@ import time
 import os
 from pathlib import Path
 from PIL import Image
-from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path, BIN_DIR, compile_vk_spoof
+from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path, BIN_DIR
 
 # Set Streamlit Page Configurations
 st.set_page_config(
