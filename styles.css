@@ -1,0 +1,134 @@
+/* Premium Clinical Dark-Mode Stylesheet for ECG Enhancer */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+/* Apply Global Font */
+html, body, [class*="css"], .stMarkdown {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Custom Main Container styling */
+.main {
+    background-color: #0B0F19; /* Deep space clinical blue */
+    color: #F8FAFC;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background-color: #0F172A !important; /* Sidebar dark slate */
+    border-right: 1px solid #1E293B;
+}
+
+/* Clinical Glassmorphism Cards */
+.clinical-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clinical-card:hover {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 10px 30px -10px rgba(6, 182, 212, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Glowing Medical Accent Badges */
+.badge-teal {
+    background-color: rgba(6, 182, 212, 0.1);
+    color: #22D3EE;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-radius: 9999px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Heartbeat ECG Line Animation */
+.heartbeat-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.heart-icon {
+    font-size: 2.2rem;
+    color: #EF4444;
+    animation: heart-pulse 1.2s infinite alternate;
+}
+
+@keyframes heart-pulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5)); }
+    100% { transform: scale(1.15); filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.8)); }
+}
+
+.pulse-line {
+    height: 4px;
+    background: linear-gradient(90deg, transparent 0%, #06B6D4 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: pulse-flow 2.5s infinite linear;
+    flex-grow: 1;
+    border-radius: 9999px;
+}
+
+@keyframes pulse-flow {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* Premium Buttons override */
+div.stButton > button:first-child {
+    background: linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.4) !important;
+    transition: all 0.25s ease !important;
+    width: 100%;
+}
+
+div.stButton > button:first-child:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px 0 rgba(6, 182, 212, 0.6) !important;
+    background: linear-gradient(135deg, #0284C7 0%, #0891B2 100%) !important;
+}
+
+div.stButton > button:first-child:active {
+    transform: translateY(1px) !important;
+}
+
+/* File Uploader area */
+[data-testid="stFileUploader"] {
+    background-color: rgba(15, 23, 42, 0.4) !important;
+    border: 2px dashed rgba(30, 41, 59, 1) !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    transition: border-color 0.3s ease;
+}
+
+[data-testid="stFileUploader"]:hover {
+    border-color: rgba(6, 182, 212, 0.5) !important;
+}
+
+/* Text & Headings */
+h1, h2, h3 {
+    color: #F8FAFC !important;
+    font-weight: 700 !important;
+}
+
+/* Clean Custom Dividers */
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(30, 41, 59, 0) 0%, rgba(30, 41, 59, 1) 50%, rgba(30, 41, 59, 0) 100%);
+    margin: 24px 0;
+}

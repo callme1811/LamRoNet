@@ -1,0 +1,17 @@
+# Real-ESRGAN portable executable and models
+bin/
+realesrgan-binary.zip
+
+# Local temporary images (uploads & enhanced results)
+temp/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Streamlit config/cache
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
