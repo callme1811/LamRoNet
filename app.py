@@ -204,10 +204,10 @@ with col_view:
                 col_orig, col_enh = st.columns(2)
                 with col_orig:
                     st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 600; margin-bottom: 8px;'>ẢNH GỐC (MỜ / NHIỄU)</p>", unsafe_allow_html=True)
-                    st.image(orig_loaded, use_container_width=True)
+                    st.image(orig_loaded, use_column_width=True)
                 with col_enh:
                     st.markdown("<p style='text-align: center; color: #10B981; font-weight: 600; margin-bottom: 8px;'>ẢNH AI TĂNG NÉT (SIÊU PHÂN GIẢI 4X)</p>", unsafe_allow_html=True)
-                    st.image(enhanced_img, use_container_width=True)
+                    st.image(enhanced_img, use_column_width=True)
             
             with tab_zoom:
                 st.markdown("<p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 12px;'>Kéo các thanh trượt bên dưới để chọn khu vực soi kỹ chuyển đạo điện tim (phóng to pixel-perfect):</p>", unsafe_allow_html=True)
@@ -255,10 +255,10 @@ with col_view:
                 col_crop_o, col_crop_e = st.columns(2)
                 with col_crop_o:
                     st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI TRƯỚC AI (RĂNG CƯA / MỜ)</p>", unsafe_allow_html=True)
-                    st.image(cropped_orig, use_container_width=True, caption=f"Toạ độ gốc X: {x1_orig}-{x2_orig}, Y: {y1_orig}-{y2_orig}")
+                    st.image(cropped_orig, use_column_width=True, caption=f"Toạ độ gốc X: {x1_orig}-{x2_orig}, Y: {y1_orig}-{y2_orig}")
                 with col_crop_e:
                     st.markdown("<p style='text-align: center; color: #10B981; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI SAU AI (SẮC NÉT / KHÔNG VỠ HÌNH)</p>", unsafe_allow_html=True)
-                    st.image(cropped_enhanced, use_container_width=True, caption=f"Toạ độ nâng cấp X: {x1_enh}-{x2_enh}, Y: {y1_enh}-{y2_enh}")
+                    st.image(cropped_enhanced, use_column_width=True, caption=f"Toạ độ nâng cấp X: {x1_enh}-{x2_enh}, Y: {y1_enh}-{y2_enh}")
 
             # --- DOWNLOAD CENTER ---
             st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
