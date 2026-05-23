@@ -103,41 +103,40 @@ def download_realesrgan_binary(status_callback=None):
 
 
 def pillow_enhance(input_path: str, output_path: str, scale: int = 4) -> str:
-    img = Image.open(input_path).convert("L")
+    from PIL import (
+        Image,
+        ImageEnhance,
+        ImageFilter,
+        ImageOps,
+    )
 
-    # Tự cân bằng sáng/tối
-    img = ImageOps.autocontrast(img, cutoff=2)
+    img = Image.open(input_path).convert("RGB")
 
-    # Làm rõ đường ECG và lưới
-    img = ImageEnhance.Contrast(img).enhance(2.2)
+    # cân bằng sáng nhẹ
+    img = ImageOps.autocontrast(img, cutoff=1)
 
-    # Phóng đại x4
+    # upscale trước
     new_size = (img.width * 4, img.height * 4)
     img = img.resize(new_size, Image.Resampling.LANCZOS)
 
-    # Sharpen mạnh hơn bản cũ
+    # sharpen vừa phải
     img = img.filter(
         ImageFilter.UnsharpMask(
-            radius=2.2,
-            percent=520,
-            threshold=1,
+            radius=1.2,
+            percent=180,
+            threshold=2,
         )
     )
 
-    # Tăng cạnh
-    img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
+    # clarity nhẹ
+    img = ImageEnhance.Sharpness(img).enhance(2.2)
 
-    # Sharpen lần 2
-    img = ImageEnhance.Sharpness(img).enhance(8.0)
+    # contrast nhẹ thôi
+    img = ImageEnhance.Contrast(img).enhance(1.08)
 
-    # Contrast cuối
-    img = ImageEnhance.Contrast(img).enhance(1.35)
-
-    # Chuyển về RGB để Streamlit/browser hiển thị ổn định
-    img = img.convert("RGB")
     img.save(output_path, "PNG")
 
-    return "Advanced ECG Pillow fallback x4"
+    return "Natural ECG enhancement"
 
 
 def run_realesrgan(
