@@ -45,7 +45,6 @@ st.markdown("""
 st.sidebar.markdown("""
     <div style='text-align: center; margin-bottom: 20px;'>
         <h2 style='margin: 0; color: #06B6D4 !important; font-size: 1.4rem;'>CẤU HÌNH REAL-ESRGAN</h2>
-        <span style='color: #64748B; font-size: 0.85rem;'>Tối ưu hóa sức mạnh AI</span>
     </div>
 """, unsafe_allow_html=True)
 
