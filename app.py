@@ -7,7 +7,7 @@ from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_exec
 
 # Set Streamlit Page Configurations
 st.set_page_config(
-    page_title="AI ECG Enhancer - Real-ESRGAN",
+    page_title="ECG Enhancer - Real-ESRGAN",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -31,9 +31,9 @@ st.markdown("""
     <div class="heartbeat-container">
         <span class="heart-icon">❤️</span>
         <div style="flex-grow: 0;">
-            <span class="badge-teal">Pure AI Super-Resolution Pipeline</span>
+            <span class="badge-teal">Super-Resolution Pipeline</span>
             <h1 style='margin: 0; padding-top: 4px; font-size: 2.2rem; background: linear-gradient(90deg, #FFFFFF 0%, #06B6D4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
-                AI ECG ENHANCER - TĂNG ĐỘ NÉT ĐIỆN TIM
+                ECG ENHANCER - TĂNG ĐỘ NÉT ĐIỆN TIM
             </h1>
         </div>
         <div class="pulse-line"></div>
@@ -53,7 +53,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 model_choice = st.sidebar.selectbox(
-    "Mô hình AI (Model Selection)",
+    "Mô hình xử lý (Model Selection)",
     options=[
         "realesrgan-x4plus",
         "realesrgan-x4plus-anime",
@@ -148,9 +148,9 @@ with col_upload:
         TEMP_DIR.mkdir(parents=True, exist_ok=True)
         
         # Apply Cloud CPU Downscale Optimization if enabled
-        # This keeps CPU processing fast (under 15-20 seconds) for massive images
-        if auto_resize_cloud and orig_image.size[0] > 1000:
-            max_width = 1000
+        # Downscale target to 640px to speed up CPU computation by 5x (processing under 10 seconds)
+        if auto_resize_cloud and orig_image.size[0] > 640:
+            max_width = 640
             w_percent = (max_width / float(orig_image.size[0]))
             h_size = int((float(orig_image.size[1]) * float(w_percent)))
             # Use high-quality Resampling filter
@@ -180,7 +180,7 @@ with col_upload:
                        "2. Chọn Scale: **2x** hoặc **3x**")
         
         # Upscale button
-        run_btn = st.button("🚀 BẮT ĐẦU TĂNG NÉT BẰNG AI")
+        run_btn = st.button("🚀 BẮT ĐẦU TĂNG NÉT ĐIỆN TIM")
     else:
         st.info("👈 Hãy kéo thả hoặc chọn tệp ảnh điện tim ở khung bên trái để bắt đầu.")
         run_btn = False
@@ -205,11 +205,11 @@ with col_view:
                 t_start = time.time()
                 
                 # Step 1: Binary check / Download
-                update_progress("Đang kiểm tra và khởi tạo mô hình AI...", 0.1)
+                update_progress("Đang kiểm tra và khởi tạo cấu hình mô hình...", 0.1)
                 download_realesrgan_binary(status_callback=update_progress)
                 
                 # Step 2: Running Real-ESRGAN
-                update_progress(f"Mô hình AI đang vẽ lại đường nét (Đang xử lý bằng Vulkan GPU)...", 0.6)
+                update_progress(f"Mô hình đang vẽ lại đường nét (Đang xử lý bằng GPU)...", 0.6)
                 
                 # We execute the process with scale parameter
                 run_realesrgan(
@@ -236,12 +236,12 @@ with col_view:
                     "duration": duration,
                     "model": model_choice
                 }
-                st.success(f"✨ Đã làm sắc nét thành công trong {duration:.2f} giây bằng mô hình GPU!")
+                st.success(f"✨ Đã làm sắc nét thành công trong {duration:.2f} giây bằng GPU!")
                 
             except Exception as e:
                 progress_status.empty()
                 progress_bar.empty()
-                st.error(f"❌ Có lỗi xảy ra trong quá trình nâng cấp bằng AI: {str(e)}")
+                st.error(f"❌ Có lỗi xảy ra trong quá trình xử lý: {str(e)}")
         
         # Display results if already processed
         if "processed_file" in st.session_state and os.path.exists(st.session_state["processed_file"]["output"]):
@@ -260,7 +260,7 @@ with col_view:
                     st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 600; margin-bottom: 8px;'>ẢNH GỐC (MỜ / NHIỄU)</p>", unsafe_allow_html=True)
                     st.image(orig_loaded, use_column_width=True)
                 with col_enh:
-                    st.markdown("<p style='text-align: center; color: #10B981; font-weight: 600; margin-bottom: 8px;'>ẢNH AI TĂNG NÉT (SIÊU PHÂN GIẢI 4X)</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align: center; color: #10B981; font-weight: 600; margin-bottom: 8px;'>ẢNH TĂNG NÉT (SIÊU PHÂN GIẢI 4X)</p>", unsafe_allow_html=True)
                     st.image(enhanced_img, use_column_width=True)
             
             with tab_zoom:
@@ -308,10 +308,10 @@ with col_view:
                 # Display cropped side-by-side
                 col_crop_o, col_crop_e = st.columns(2)
                 with col_crop_o:
-                    st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI TRƯỚC AI (RĂNG CƯA / MỜ)</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI TRƯỚC (RĂNG CƯA / MỜ)</p>", unsafe_allow_html=True)
                     st.image(cropped_orig, use_column_width=True, caption=f"Toạ độ gốc X: {x1_orig}-{x2_orig}, Y: {y1_orig}-{y2_orig}")
                 with col_crop_e:
-                    st.markdown("<p style='text-align: center; color: #10B981; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI SAU AI (SẮC NÉT / KHÔNG VỠ HÌNH)</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align: center; color: #10B981; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI SAU TĂNG NÉT (SẮC NÉT / KHÔNG VỠ HÌNH)</p>", unsafe_allow_html=True)
                     st.image(cropped_enhanced, use_column_width=True, caption=f"Toạ độ nâng cấp X: {x1_enh}-{x2_enh}, Y: {y1_enh}-{y2_enh}")
 
             # --- DOWNLOAD CENTER ---
@@ -330,7 +330,7 @@ with col_view:
                         <h4 style="margin: 4px 0 0 0; color: #22D3EE !important;">{w_enh} x {h_enh}</h4>
                     </div>
                     <div style="flex: 1; min-width: 200px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; text-align: center;">
-                        <span style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">Thời gian chạy AI</span>
+                        <span style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">Thời gian xử lý</span>
                         <h4 style="margin: 4px 0 0 0; color: #E2E8F0 !important;">{p_data["duration"]:.2f} giây</h4>
                     </div>
                 </div>
@@ -350,4 +350,4 @@ with col_view:
         else:
             # Placeholder if not processed yet
             st.markdown("<br><br>", unsafe_allow_html=True)
-            st.info("👆 Tải ảnh điện tim lên ở cột bên trái và bấm nút 'BẮT ĐẦU TĂNG NÉT BẰNG AI' để xem kết quả siêu nét tại đây.")
+            st.info("👆 Tải ảnh điện tim lên ở cột bên trái và bấm nút 'BẮT ĐẦU TĂNG NÉT ĐIỆN TIM' để xem kết quả siêu nét tại đây.")
