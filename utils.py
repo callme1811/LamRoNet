@@ -151,6 +151,7 @@ def compile_vk_spoof() -> Path:
     On Linux, compiles a tiny C shared library that hooks Vulkan physical device properties
     to spoof CPU devices (like lavapipe/llvmpipe) as discrete GPUs.
     This prevents NCNN from skipping them and throwing "invalid gpu device" (exit code 255).
+    Uses a headerless implementation to bypass any libvulkan-dev package requirements.
     """
     spoof_c_path = BIN_DIR / "vk_spoof.c"
     spoof_so_path = BIN_DIR / "libvk_spoof.so"
@@ -160,38 +161,40 @@ def compile_vk_spoof() -> Path:
         
     c_code = """#define _GNU_SOURCE
 #include <dlfcn.h>
-#include <vulkan/vulkan.h>
+#include <stdint.h>
 
-void vkGetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties) {
-    typedef void (*PFN_vkGetPhysicalDeviceProperties)(VkPhysicalDevice, VkPhysicalDeviceProperties*);
+void vkGetPhysicalDeviceProperties(void* physicalDevice, uint32_t* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties)(void*, uint32_t*);
     PFN_vkGetPhysicalDeviceProperties real_func = (PFN_vkGetPhysicalDeviceProperties)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties");
     if (real_func) {
         real_func(physicalDevice, pProperties);
     }
-    if (pProperties && pProperties->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-        pProperties->deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    // deviceType is at index 4 (offset 16)
+    if (pProperties && pProperties[4] == 4) {
+        pProperties[4] = 2; // Spoof CPU (4) as Discrete GPU (2)
     }
 }
 
-void vkGetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties) {
-    typedef void (*PFN_vkGetPhysicalDeviceProperties2)(VkPhysicalDevice, VkPhysicalDeviceProperties2*);
+void vkGetPhysicalDeviceProperties2(void* physicalDevice, uint32_t* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties2)(void*, uint32_t*);
     PFN_vkGetPhysicalDeviceProperties2 real_func = (PFN_vkGetPhysicalDeviceProperties2)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties2");
     if (real_func) {
         real_func(physicalDevice, pProperties);
     }
-    if (pProperties && pProperties->properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-        pProperties->properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    // properties.deviceType is at index 8 (offset 32 on 64-bit systems due to pointer padding)
+    if (pProperties && pProperties[8] == 4) {
+        pProperties[8] = 2; // Spoof CPU (4) as Discrete GPU (2)
     }
 }
 
-void vkGetPhysicalDeviceProperties2KHR(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties2* pProperties) {
-    typedef void (*PFN_vkGetPhysicalDeviceProperties2KHR)(VkPhysicalDevice, VkPhysicalDeviceProperties2*);
+void vkGetPhysicalDeviceProperties2KHR(void* physicalDevice, uint32_t* pProperties) {
+    typedef void (*PFN_vkGetPhysicalDeviceProperties2KHR)(void*, uint32_t*);
     PFN_vkGetPhysicalDeviceProperties2KHR real_func = (PFN_vkGetPhysicalDeviceProperties2KHR)dlsym(RTLD_NEXT, "vkGetPhysicalDeviceProperties2KHR");
     if (real_func) {
         real_func(physicalDevice, pProperties);
     }
-    if (pProperties && pProperties->properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-        pProperties->properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    if (pProperties && pProperties[8] == 4) {
+        pProperties[8] = 2; // Spoof CPU (4) as Discrete GPU (2)
     }
 }
 """
@@ -202,11 +205,21 @@ void vkGetPhysicalDeviceProperties2KHR(VkPhysicalDevice physicalDevice, VkPhysic
             
         # Compile using gcc
         cmd = ["gcc", "-shared", "-fPIC", "-o", str(spoof_so_path), str(spoof_c_path), "-ldl"]
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if res.returncode != 0:
+            raise RuntimeError(f"gcc compilation failed (code {res.returncode}): {res.stderr}")
         return spoof_so_path
-    except Exception:
-        # If compilation fails, return None
-        return None
+    except Exception as e:
+        # Write compile error to a file in TEMP_DIR so we can debug it
+        err_log = TEMP_DIR / "compile_error.log"
+        try:
+            TEMP_DIR.mkdir(parents=True, exist_ok=True)
+            with open(err_log, "w", encoding="utf-8") as f:
+                f.write(str(e))
+        except Exception:
+            pass
+        # Raise the error
+        raise RuntimeError(f"Vulkan spoofer compilation failed: {str(e)}")
 
 def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesrgan-x4plus", tile_size: int = 400, scale: int = 4) -> bool:
     """
