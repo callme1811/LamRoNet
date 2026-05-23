@@ -52,22 +52,30 @@ st.sidebar.markdown("""
 model_choice = st.sidebar.selectbox(
     "Mô hình AI (Model Selection)",
     options=[
-        "realesr-animevideov3",
+        "realesrgan-x4plus",
         "realesrgan-x4plus-anime",
-        "realesrgan-x4plus"
+        "realesr-animevideov3"
     ],
     index=0,
-    help="• 'animevideov3': SIÊU NHANH & NHẸ (Khuyên dùng khi chạy trên Cloud để tránh chờ lâu).\n"
-         "• 'x4plus-anime': Rất tốt cho nét vẽ mảnh và đường sóng, làm mịn giấy tốt.\n"
-         "• 'x4plus': Chi tiết tối đa cho chữ và đường lưới."
+    help="• 'x4plus': Chi tiết tối đa cho cấu trúc giấy, đường sóng và lưới thực tế (Khuyên dùng cho ảnh chụp điện tim).\n"
+         "• 'x4plus-anime': Rất tốt cho nét vẽ mảnh và đường sóng vẽ nét.\n"
+         "• 'animevideov3': Siêu nhanh và nhẹ cho CPU."
 )
+
+# Enforce 4x scale constraint for x4plus models to prevent executable errors
+if model_choice in ["realesrgan-x4plus", "realesrgan-x4plus-anime"]:
+    scale_options = [4]
+    scale_help = "Mô hình này yêu cầu tỷ lệ phóng đại cố định là 4x."
+else:
+    scale_options = [2, 3, 4]
+    scale_help = "• Chọn 2x hoặc 3x để phóng đại nhẹ và chạy nhanh hơn.\n" \
+                 "• 4x cho chi tiết cao nhất."
 
 scale_choice = st.sidebar.selectbox(
     "Tỷ lệ phóng đại (Scale)",
-    options=[2, 3, 4],
+    options=scale_options,
     index=0,
-    help="• Chọn 2x hoặc 3x để phóng đại vừa phải nhưng xử lý nhanh gấp 2-4 lần.\n"
-         "• 4x cho chi tiết cao nhất nhưng chạy lâu nhất."
+    help=scale_help
 )
 
 tile_size = st.sidebar.slider(
