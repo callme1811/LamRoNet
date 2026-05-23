@@ -24,14 +24,18 @@ TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_executable_name() -> str:
-    return "realesrgan-ncnn-vulkan.exe" if os.name == "nt" else "realesrgan-ncnn-vulkan"
+    if os.name == "nt":
+        return "realesrgan-ncnn-vulkan.exe"
+    return "realesrgan-ncnn-vulkan"
 
 
 def get_executable_path():
     exec_name = get_executable_name()
+
     for path in BIN_DIR.rglob(exec_name):
         if path.is_file():
             return path
+
     return None
 
 
@@ -99,22 +103,41 @@ def download_realesrgan_binary(status_callback=None):
 
 
 def pillow_enhance(input_path: str, output_path: str, scale: int = 4) -> str:
-    img = Image.open(input_path).convert("RGB")
+    img = Image.open(input_path).convert("L")
 
-    img = ImageOps.autocontrast(img, cutoff=1)
-    img = ImageEnhance.Contrast(img).enhance(1.55)
+    # Tự cân bằng sáng/tối
+    img = ImageOps.autocontrast(img, cutoff=2)
 
+    # Làm rõ đường ECG và lưới
+    img = ImageEnhance.Contrast(img).enhance(2.2)
+
+    # Phóng đại x4
     new_size = (img.width * 4, img.height * 4)
     img = img.resize(new_size, Image.Resampling.LANCZOS)
 
-    img = ImageEnhance.Sharpness(img).enhance(6.0)
-    img = img.filter(ImageFilter.UnsharpMask(radius=1.4, percent=360, threshold=1))
-    img = img.filter(ImageFilter.SHARPEN)
+    # Sharpen mạnh hơn bản cũ
+    img = img.filter(
+        ImageFilter.UnsharpMask(
+            radius=2.2,
+            percent=520,
+            threshold=1,
+        )
+    )
 
-    img = ImageEnhance.Contrast(img).enhance(1.25)
+    # Tăng cạnh
+    img = img.filter(ImageFilter.EDGE_ENHANCE_MORE)
 
+    # Sharpen lần 2
+    img = ImageEnhance.Sharpness(img).enhance(8.0)
+
+    # Contrast cuối
+    img = ImageEnhance.Contrast(img).enhance(1.35)
+
+    # Chuyển về RGB để Streamlit/browser hiển thị ổn định
+    img = img.convert("RGB")
     img.save(output_path, "PNG")
-    return "Pillow fallback x4"
+
+    return "Advanced ECG Pillow fallback x4"
 
 
 def run_realesrgan(
@@ -159,6 +182,6 @@ def run_realesrgan(
 
     if "invalid gpu device" in error_msg.lower() or process.returncode == 255:
         pillow_enhance(input_path, output_path, scale=4)
-        return "Pillow fallback x4 vì Cloud không hỗ trợ Vulkan GPU"
+        return "Advanced ECG Pillow fallback x4 vì Cloud không hỗ trợ Vulkan GPU"
 
     raise RuntimeError(f"Real-ESRGAN failed code {process.returncode}: {error_msg}")
