@@ -157,6 +157,14 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
 
     exec_dir = exec_path.parent
     
+    # Environment copy to configure Vulkan settings
+    env = os.environ.copy()
+    if os.name != 'nt':
+        # Bypass buggy Mesa llvmpipe Vulkan software rendering drivers in headless Linux environments (Streamlit Cloud)
+        # by forcing the Vulkan loader to find 0 devices. This forces Real-ESRGAN to execute natively and cleanly on CPU.
+        env["VK_ICD_FILENAMES"] = ""
+        env["VK_DRIVER_FILES"] = ""
+    
     # Check if we are running inside a Streamlit Cloud container (CPU-only virtual Linux)
     # If yes, we directly execute CPU mode (-g -1) to prevent the Vulkan device scan from hanging indefinitely.
     is_streamlit_cloud = (os.name != 'nt' and ("/mount/src/" in str(BASE_DIR) or os.environ.get("STREAMLIT_SHARING_ORGANIZATION")))
@@ -175,6 +183,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
         process_cpu = subprocess.run(
             cmd_cpu,
             cwd=str(exec_dir),
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -202,6 +211,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
     process = subprocess.run(
         cmd_gpu,
         cwd=str(exec_dir),
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -228,6 +238,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
             process_cpu = subprocess.run(
                 cmd_cpu,
                 cwd=str(exec_dir),
+                env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,

@@ -183,13 +183,6 @@ with col_upload:
             </div>
         """, unsafe_allow_html=True)
         
-        # Display optimization tips if running on CPU-mode (Cloud)
-        if os.name != 'nt':
-            st.warning("ℹ️ **Mẹo tăng tốc trên Cloud CPU:**\n"
-                       "Để giảm thời gian chờ xử lý xuống dưới **10-15 giây**:\n"
-                       "1. Chọn Model: **realesr-animevideov3**\n"
-                       "2. Chọn Scale: **2x** hoặc **3x**")
-        
         # Upscale button
         run_btn = st.button("🚀 BẮT ĐẦU TĂNG NÉT ĐIỆN TIM")
     else:
