@@ -4,6 +4,8 @@ import zipfile
 import shutil
 import subprocess
 import requests
+import tempfile
+import getpass
 from pathlib import Path
 
 # Base directory (Git repo mount, might be read-only on Streamlit Cloud)
@@ -11,28 +13,38 @@ BASE_DIR = Path(__file__).resolve().parent
 
 # Define writable directories
 # On Windows, we use local folders next to the script.
-# On Linux/Cloud, we use /tmp/ which is guaranteed to be writable and support executable permissions.
+# On Linux/Cloud, we use a unique folder inside the system temp directory to prevent user collisions.
 if os.name == 'nt':
     WORK_DIR = BASE_DIR
     BIN_DIR = WORK_DIR / "bin"
     TEMP_DIR = WORK_DIR / "temp"
 else:
-    WORK_DIR = Path("/tmp/ecg_enhancer")
+    # Use unique folder based on the container username to prevent permission errors
+    username = getpass.getuser()
+    WORK_DIR = Path(tempfile.gettempdir()) / f"ecg_{username}"
     BIN_DIR = WORK_DIR / "bin"
     TEMP_DIR = WORK_DIR / "temp"
 
-# Ensure folders exist with robust local fallback if /tmp permissions fail
+# Ensure folders exist with multiple fail-safe fallbacks
 try:
     BIN_DIR.mkdir(parents=True, exist_ok=True)
 except Exception:
-    BIN_DIR = BASE_DIR / "bin"
-    BIN_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        BIN_DIR = BASE_DIR / "bin"
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Final fallback to standard temp directory root
+        BIN_DIR = Path(tempfile.gettempdir())
 
 try:
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 except Exception:
-    TEMP_DIR = BASE_DIR / "temp"
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        TEMP_DIR = BASE_DIR / "temp"
+        TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Final fallback to standard temp directory root
+        TEMP_DIR = Path(tempfile.gettempdir())
 
 def get_executable_name() -> str:
     """Return the platform-specific executable name."""
