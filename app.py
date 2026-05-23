@@ -107,8 +107,14 @@ with col_upload:
         # Load and save original image
         orig_image = Image.open(uploaded_file)
         
-        # Save original to temp
-        input_img_path = TEMP_DIR / f"input_{uploaded_file.name}"
+        # Extract file extension and normalize name
+        file_ext = os.path.splitext(uploaded_file.name)[1].lower() or ".png"
+        
+        # Ensure temporary directory exists explicitly
+        TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Save original to temp with clean, safe name
+        input_img_path = TEMP_DIR / f"input_temp{file_ext}"
         orig_image.save(input_img_path)
         
         # Details metadata card
@@ -128,9 +134,11 @@ with col_upload:
 
 with col_view:
     if uploaded_file is not None:
-        # Create container paths for output
-        output_img_name = f"enhanced_{model_choice}_{uploaded_file.name}"
-        output_img_path = TEMP_DIR / output_img_name
+        # Extract file extension and normalize name
+        file_ext = os.path.splitext(uploaded_file.name)[1].lower() or ".png"
+        
+        # Create container paths for output with clean, safe name
+        output_img_path = TEMP_DIR / f"enhanced_temp{file_ext}"
         
         if run_btn:
             progress_status = st.empty()

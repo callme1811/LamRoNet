@@ -1,7 +1,3 @@
-# Real-ESRGAN portable executable and models
-bin/
-realesrgan-binary.zip
-
 # Local temporary images (uploads & enhanced results)
 temp/
 
