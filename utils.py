@@ -190,6 +190,26 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
 
     exec_dir = exec_path.parent
     
+    # Read the original input image size
+    orig_img = cv2.imread(input_path)
+    if orig_img is None:
+        raise ValueError(f"Could not read input image for size verification: {input_path}")
+    h_orig, w_orig = orig_img.shape[:2]
+    
+    # Expected target size
+    w_target = int(w_orig * scale)
+    h_target = int(h_orig * scale)
+
+    # Determine native scale supported by the selected model in the binary.
+    # realesrgan-x4plus and realesrgan-x4plus-anime only support 4x natively.
+    # realesr-animevideov3 supports 2x, 3x, 4x.
+    native_scale = 4
+    if "animevideov3" in model_name and scale in [2, 3, 4]:
+        native_scale = scale
+    else:
+        # For 4x models, force native scale to 4 to prevent binary tiling/distortion bugs
+        native_scale = 4
+    
     # Base command arguments
     # We attempt GPU 0 first (force Vulkan)
     cmd = [
@@ -198,7 +218,7 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
         "-o", str(output_path),
         "-n", model_name,
         "-t", str(tile_size),
-        "-s", str(scale),
+        "-s", str(native_scale),
         "-g", "0"
     ]
     
@@ -240,4 +260,14 @@ def run_realesrgan(input_path: str, output_path: str, model_name: str = "realesr
             error_msg = process.stderr or process.stdout or "Unknown error"
             raise RuntimeError(f"Real-ESRGAN execution failed on CPU as well (code {process.returncode}): {error_msg}")
             
+    # Check output size and downsample if there's a scale mismatch
+    if os.path.exists(output_path):
+        out_img = cv2.imread(output_path)
+        if out_img is not None:
+            h_out, w_out = out_img.shape[:2]
+            if w_out != w_target or h_out != h_target:
+                # Resize to target size to avoid squishing/tiling artifacts!
+                resized_img = cv2.resize(out_img, (w_target, h_target), interpolation=cv2.INTER_LANCZOS4)
+                cv2.imwrite(output_path, resized_img)
+                
     return True
