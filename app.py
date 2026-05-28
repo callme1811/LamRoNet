@@ -77,26 +77,28 @@ scale_choice = int(scale_label.split("x")[0])
 model_choice = st.sidebar.selectbox(
     "Mô hình AI (Model Selection)",
     options=[
-        "realesrgan-x4plus-anime",
         "realesrgan-x4plus",
+        "realesrnet-x4plus",
+        "realesrgan-x4plus-anime",
         "realesr-animevideov3"
     ],
     index=0,
     disabled=(scale_choice == 1),
-    help="• 'x4plus-anime': Tối ưu nhất cho các nét vẽ và đường sóng, làm mịn nhiễu hạt giấy cực tốt.\n"
-         "• 'x4plus': Chi tiết tối đa cho văn bản và các kết cấu phức tạp.\n"
+    help="• 'x4plus': Tối ưu nhất cho chữ viết, lưới số và đường nét điện tim thực tế (Khuyên dùng!).\n"
+         "• 'realesrnet-x4plus': Phiên bản khử nhiễu mịn đường sóng (MSE loss).\n"
+         "• 'x4plus-anime': Tối ưu cho tranh vẽ 2D, dễ làm nhòe mất chữ và chi tiết nhỏ y tế.\n"
          "• 'animevideov3': Rất nhanh và nhẹ."
 )
 
 tile_size = st.sidebar.slider(
     "Kích thước phân mảnh (Tile Size)",
-    min_value=100,
+    min_value=0,
     max_value=800,
-    value=400,
+    value=0,
     step=50,
     disabled=(scale_choice == 1),
-    help="Chia nhỏ ảnh khi xử lý để tránh tràn bộ nhớ VRAM của card đồ họa. "
-         "Giảm xuống (ví dụ: 200, 300) nếu máy bị treo hoặc báo lỗi tràn bộ nhớ (Out of Memory)."
+    help="• 0 (Auto): Hệ thống tự động ghép mảnh tối ưu (Khuyên dùng để tránh sọc lệch lưới/bóng ma).\n"
+         "• 100-800: Chia nhỏ mảnh khi card đồ họa bị tràn bộ nhớ (Out of Memory)."
 )
 
 # Advanced Medical Image Filters Expander
