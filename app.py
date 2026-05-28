@@ -1,13 +1,22 @@
 import streamlit as st
 import time
 import os
+import shutil
+import platform
 from pathlib import Path
 from PIL import Image
-from utils import download_realesrgan_binary, run_realesrgan, TEMP_DIR, get_executable_path
+from utils import (
+    download_realesrgan_binary,
+    run_realesrgan,
+    preprocess_image,
+    postprocess_image,
+    TEMP_DIR,
+    get_executable_path
+)
 
 # Set Streamlit Page Configurations
 st.set_page_config(
-    page_title="AI ECG Enhancer - Real-ESRGAN",
+    page_title="AI ECG Enhancer - LamRoNet",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -28,15 +37,15 @@ st.markdown("""
     <div class="heartbeat-container">
         <span class="heart-icon">❤️</span>
         <div style="flex-grow: 0;">
-            <span class="badge-teal">Pure AI Super-Resolution Pipeline</span>
+            <span class="badge-teal">Pure AI & OpenCV Medical Super-Resolution Pipeline</span>
             <h1 style='margin: 0; padding-top: 4px; font-size: 2.2rem; background: linear-gradient(90deg, #FFFFFF 0%, #06B6D4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
-                AI ECG ENHANCER - TĂNG ĐỘ NÉT ĐIỆN TIM
+                AI ECG ENHANCER - TĂNG ĐỘ NÉT ĐIỆN TIM VÀ VĂN BẢN
             </h1>
         </div>
         <div class="pulse-line"></div>
     </div>
     <p style='color: #94A3B8; margin-top: -8px; margin-bottom: 24px; font-size: 1.05rem;'>
-        Khôi phục, khử nhiễu và làm sắc nét các bản quét điện tim (ECG) mờ nhạt bằng mô hình học sâu <b>Real-ESRGAN (NCNN Vulkan GPU)</b>.
+        Khôi phục, khử nhiễu và làm sắc nét các bản quét điện tim (ECG) mờ nhạt bằng mô hình học sâu <b>Real-ESRGAN</b> kết hợp bộ lọc xử lý ảnh y tế nâng cao.
     </p>
     <div class="divider"></div>
 """, unsafe_allow_html=True)
@@ -44,9 +53,26 @@ st.markdown("""
 # --- SIDEBAR SETTINGS ---
 st.sidebar.markdown("""
     <div style='text-align: center; margin-bottom: 20px;'>
-        <h2 style='margin: 0; color: #06B6D4 !important; font-size: 1.4rem;'>CẤU HÌNH REAL-ESRGAN</h2>
+        <h2 style='margin: 0; color: #06B6D4 !important; font-size: 1.4rem;'>CẤU HÌNH PIPELINE LÂM SÀNG</h2>
     </div>
 """, unsafe_allow_html=True)
+
+# Pipeline Configuration Mode
+st.sidebar.markdown("### 🛠️ Bộ Lọc & Siêu Phân Giải")
+
+scale_label = st.sidebar.selectbox(
+    "Tỷ lệ siêu phân giải (Upscale Scale)",
+    options=[
+        "1x (Chỉ dùng bộ lọc OpenCV - Siêu tốc <0.5s)",
+        "2x (Siêu phân giải nét)",
+        "3x (Siêu phân giải chi tiết)",
+        "4x (Siêu phân giải cực đại)"
+    ],
+    index=1,
+    help="• 1x: Bỏ qua mô hình AI, chỉ áp dụng bộ lọc xử lý ảnh y tế nâng cao bằng OpenCV. Cực nhanh!\n"
+         "• 2x, 3x, 4x: Chạy mô hình AI tương ứng kết hợp bộ lọc làm nét mịn."
+)
+scale_choice = int(scale_label.split("x")[0])
 
 model_choice = st.sidebar.selectbox(
     "Mô hình AI (Model Selection)",
@@ -56,6 +82,7 @@ model_choice = st.sidebar.selectbox(
         "realesr-animevideov3"
     ],
     index=0,
+    disabled=(scale_choice == 1),
     help="• 'x4plus-anime': Tối ưu nhất cho các nét vẽ và đường sóng, làm mịn nhiễu hạt giấy cực tốt.\n"
          "• 'x4plus': Chi tiết tối đa cho văn bản và các kết cấu phức tạp.\n"
          "• 'animevideov3': Rất nhanh và nhẹ."
@@ -67,21 +94,74 @@ tile_size = st.sidebar.slider(
     max_value=800,
     value=400,
     step=50,
+    disabled=(scale_choice == 1),
     help="Chia nhỏ ảnh khi xử lý để tránh tràn bộ nhớ VRAM của card đồ họa. "
          "Giảm xuống (ví dụ: 200, 300) nếu máy bị treo hoặc báo lỗi tràn bộ nhớ (Out of Memory)."
 )
 
+# Advanced Medical Image Filters Expander
+with st.sidebar.expander("🩺 Bộ lọc nâng cao (Medical Filters)", expanded=True):
+    color_mode = st.selectbox(
+        "Chế độ hiển thị lâm sàng",
+        options=[
+            "Original Enhanced",
+            "Clinical Monochromatic",
+            "Waveform Isolation"
+        ],
+        index=0,
+        help="• 'Original Enhanced': Giữ màu nguyên bản, tăng bão hòa và độ tương phản lưới giấy.\n"
+             "• 'Clinical Monochromatic': Chuyển ảnh xám tương phản cao, làm nổi bật đường sóng trên nền giấy trắng.\n"
+             "• 'Waveform Isolation': Làm mờ nhẹ nền giấy lưới hồng để tập trung tối đa vào đường sóng ECG màu đen."
+    )
+    
+    clahe_clip = st.slider(
+        "Độ tương phản cục bộ (CLAHE)",
+        min_value=0.0,
+        max_value=5.0,
+        value=2.0,
+        step=0.2,
+        help="Tăng tương phản thích ứng giúp kéo các đường sóng mờ nhạt nổi bật rõ nét mà không làm cháy hình."
+    )
+    
+    pre_sharpen_weight = st.slider(
+        "Làm nét thô trước AI (Pre-Sharpen)",
+        min_value=0.0,
+        max_value=2.0,
+        value=0.5,
+        step=0.1,
+        help="Làm sắc nét các cạnh trước khi gửi vào mô hình AI để tránh hiện tượng vỡ hình và răng cưa."
+    )
+    
+    denoise_strength = st.slider(
+        "Khử nhiễu nền giấy (Denoise)",
+        min_value=0.0,
+        max_value=5.0,
+        value=0.0,
+        step=0.5,
+        help="Lọc các hạt nhiễu, cát trên giấy quét bằng bộ lọc Bilateral bảo toàn biên."
+    )
+    
+    post_sharpen_weight = st.slider(
+        "Làm nét tinh sau AI (Post-Sharpen)",
+        min_value=0.0,
+        max_value=2.0,
+        value=0.5,
+        step=0.1,
+        help="Tối ưu hóa độ sắc cạnh cuối cùng của ảnh sau khi phóng đại."
+    )
+
 st.sidebar.markdown("<div class='divider' style='margin: 16px 0;'></div>", unsafe_allow_html=True)
 
 # System Diagnostics Display in Sidebar
-st.sidebar.markdown("### ⚡ Trạng Thái Hệ Thống")
-st.sidebar.info("💻 Hệ điều hành: Windows\n"
-                "⚙️ Gia tốc: Vulkan GPU (NVIDIA)\n"
+st.sidebar.markdown("### ⚡ Trạng Thế Hệ Thống")
+os_name = platform.system()
+st.sidebar.info(f"💻 Hệ điều hành: {os_name}\n"
+                "⚙️ Gia tốc: Vulkan GPU (Tự động fallback CPU)\n"
                 "📊 Tự động tối ưu hóa: Có (Tiling)")
 
 executable_found = get_executable_path() is not None
 if executable_found:
-    st.sidebar.success("✅ Real-ESRGAN: SẴN SÀNG")
+    st.sidebar.success("✅ Real-ESRGAN Binary: SẴN SÀNG")
 else:
     st.sidebar.warning("⚠️ Cần tải mô hình Real-ESRGAN (Tự động tải khi bấm xử lý)")
 
@@ -126,7 +206,7 @@ with col_upload:
         """, unsafe_allow_html=True)
         
         # Upscale button
-        run_btn = st.button("🚀 BẮT ĐẦU TĂNG NÉT BẰNG AI")
+        run_btn = st.button("🚀 BẮT ĐẦU LÀM RÕ NÉT BẰNG AI")
     else:
         st.info("👈 Hãy kéo thả hoặc chọn tệp ảnh điện tim ở khung bên trái để bắt đầu.")
         run_btn = False
@@ -138,6 +218,7 @@ with col_view:
         
         # Create container paths for output with clean, safe name
         output_img_path = TEMP_DIR / f"enhanced_temp{file_ext}"
+        preprocessed_img_path = TEMP_DIR / f"preprocessed_temp{file_ext}"
         
         if run_btn:
             progress_status = st.empty()
@@ -150,19 +231,42 @@ with col_view:
             try:
                 t_start = time.time()
                 
-                # Step 1: Binary check / Download
-                update_progress("Đang kiểm tra và khởi tạo mô hình AI...", 0.1)
-                download_realesrgan_binary(status_callback=update_progress)
-                
-                # Step 2: Running Real-ESRGAN
-                update_progress(f"Mô hình AI đang vẽ lại đường nét (Đang xử lý bằng Vulkan GPU)...", 0.6)
-                
-                # We execute the process
-                run_realesrgan(
+                # Step 1: Pre-processing (OpenCV)
+                update_progress("Đang tối ưu cấu trúc ảnh lâm sàng (Khử nhiễu & CLAHE)...", 0.15)
+                preprocess_image(
                     input_path=str(input_img_path),
+                    output_path=str(preprocessed_img_path),
+                    denoise_strength=denoise_strength,
+                    clahe_clip=clahe_clip,
+                    clahe_grid=8,
+                    sharpen_weight=pre_sharpen_weight
+                )
+                
+                # Step 2: AI Super Resolution or Bypass
+                if scale_choice == 1:
+                    update_progress("Sao chép ảnh đã xử lý lưới nét (Bỏ qua mô hình AI)...", 0.6)
+                    shutil.copy(str(preprocessed_img_path), str(output_img_path))
+                else:
+                    # Check and download binary
+                    update_progress("Đang kiểm tra và tải gói thực thi mô hình AI đa nền tảng...", 0.3)
+                    download_realesrgan_binary(status_callback=update_progress)
+                    
+                    update_progress(f"Mô hình AI đang tái cấu trúc và làm sắc nét (Scale {scale_choice}x, Tự động fallback CPU nếu thiếu GPU)...", 0.6)
+                    run_realesrgan(
+                        input_path=str(preprocessed_img_path),
+                        output_path=str(output_img_path),
+                        model_name=model_choice,
+                        tile_size=tile_size,
+                        scale=scale_choice
+                    )
+                
+                # Step 3: Post-processing (OpenCV Filters & Clinical Color Modes)
+                update_progress("Áp dụng bộ lọc làm nét mịn và bộ lọc màu lâm sàng...", 0.85)
+                postprocess_image(
+                    input_path=str(output_img_path),
                     output_path=str(output_img_path),
-                    model_name=model_choice,
-                    tile_size=tile_size
+                    mode=color_mode,
+                    sharpen_weight=post_sharpen_weight
                 )
                 
                 t_end = time.time()
@@ -179,14 +283,15 @@ with col_view:
                     "input": str(input_img_path),
                     "output": str(output_img_path),
                     "duration": duration,
-                    "model": model_choice
+                    "model": model_choice if scale_choice > 1 else "Bypassed (Pure OpenCV)",
+                    "scale": scale_choice
                 }
-                st.success(f"✨ Đã làm sắc nét thành công trong {duration:.2f} giây bằng mô hình GPU!")
+                st.success(f"✨ Đã làm sắc nét thành công trong {duration:.2f} giây!")
                 
             except Exception as e:
                 progress_status.empty()
                 progress_bar.empty()
-                st.error(f"❌ Có lỗi xảy ra trong quá trình nâng cấp bằng AI: {str(e)}")
+                st.error(f"❌ Có lỗi xảy ra trong quá trình nâng cấp ảnh: {str(e)}")
         
         # Display results if already processed
         if "processed_file" in st.session_state and os.path.exists(st.session_state["processed_file"]["output"]):
@@ -203,10 +308,11 @@ with col_view:
                 col_orig, col_enh = st.columns(2)
                 with col_orig:
                     st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 600; margin-bottom: 8px;'>ẢNH GỐC (MỜ / NHIỄU)</p>", unsafe_allow_html=True)
-                    st.image(orig_loaded, use_column_width=True)
+                    st.image(orig_loaded, use_container_width=True)
                 with col_enh:
-                    st.markdown("<p style='text-align: center; color: #10B981; font-weight: 600; margin-bottom: 8px;'>ẢNH AI TĂNG NÉT (SIÊU PHÂN GIẢI 4X)</p>", unsafe_allow_html=True)
-                    st.image(enhanced_img, use_column_width=True)
+                    curr_scale = p_data["scale"]
+                    st.markdown(f"<p style='text-align: center; color: #10B981; font-weight: 600; margin-bottom: 8px;'>ẢNH TĂNG NÉT LÂM SÀNG (SIÊU PHÂN GIẢI {curr_scale}X)</p>", unsafe_allow_html=True)
+                    st.image(enhanced_img, use_container_width=True)
             
             with tab_zoom:
                 st.markdown("<p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 12px;'>Kéo các thanh trượt bên dưới để chọn khu vực soi kỹ chuyển đạo điện tim (phóng to pixel-perfect):</p>", unsafe_allow_html=True)
@@ -237,7 +343,7 @@ with col_view:
                 x2_orig = min(w, x1_orig + crop_size_orig_w)
                 y2_orig = min(h, y1_orig + crop_size_orig_h)
                 
-                # Enhanced coordinate box (4 times larger)
+                # Enhanced coordinate box (calculated dynamic scale)
                 scale_w = w_enh / w
                 scale_h = h_enh / h
                 
@@ -254,11 +360,11 @@ with col_view:
                 col_crop_o, col_crop_e = st.columns(2)
                 with col_crop_o:
                     st.markdown("<p style='text-align: center; color: #EF4444; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI TRƯỚC AI (RĂNG CƯA / MỜ)</p>", unsafe_allow_html=True)
-                    st.image(cropped_orig, use_column_width=True, caption=f"Toạ độ gốc X: {x1_orig}-{x2_orig}, Y: {y1_orig}-{y2_orig}")
+                    st.image(cropped_orig, use_container_width=True, caption=f"Toạ độ gốc X: {x1_orig}-{x2_orig}, Y: {y1_orig}-{y2_orig}")
                 with col_crop_e:
                     st.markdown("<p style='text-align: center; color: #10B981; font-weight: 500; font-size: 0.9rem;'>VÙNG SOI SAU AI (SẮC NÉT / KHÔNG VỠ HÌNH)</p>", unsafe_allow_html=True)
-                    st.image(cropped_enhanced, use_column_width=True, caption=f"Toạ độ nâng cấp X: {x1_enh}-{x2_enh}, Y: {y1_enh}-{y2_enh}")
-
+                    st.image(cropped_enhanced, use_container_width=True, caption=f"Toạ độ nâng cấp X: {x1_enh}-{x2_enh}, Y: {y1_enh}-{y2_enh}")
+ 
             # --- DOWNLOAD CENTER ---
             st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
             st.markdown("### 💾 TRUNG TÂM TẢI XUỐNG")
@@ -271,11 +377,11 @@ with col_view:
                         <h4 style="margin: 4px 0 0 0; color: #E2E8F0 !important;">{w} x {h}</h4>
                     </div>
                     <div style="flex: 1; min-width: 200px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; text-align: center;">
-                        <span style="font-size: 0.75rem; color: #06B6D4; text-transform: uppercase;">Độ phân giải nâng cấp (4x)</span>
+                        <span style="font-size: 0.75rem; color: #06B6D4; text-transform: uppercase;">Độ phân giải nâng cấp ({p_data["scale"]}x)</span>
                         <h4 style="margin: 4px 0 0 0; color: #22D3EE !important;">{w_enh} x {h_enh}</h4>
                     </div>
                     <div style="flex: 1; min-width: 200px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; text-align: center;">
-                        <span style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">Thời gian chạy AI</span>
+                        <span style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">Thời gian xử lý</span>
                         <h4 style="margin: 4px 0 0 0; color: #E2E8F0 !important;">{p_data["duration"]:.2f} giây</h4>
                     </div>
                 </div>
@@ -295,4 +401,4 @@ with col_view:
         else:
             # Placeholder if not processed yet
             st.markdown("<br><br>", unsafe_allow_html=True)
-            st.info("👆 Tải ảnh điện tim lên ở cột bên trái và bấm nút 'BẮT ĐẦU TĂNG NÉT BẰNG AI' để xem kết quả siêu nét tại đây.")
+            st.info("👆 Tải ảnh điện tim lên ở cột bên trái và cấu hình bộ lọc ở sidebar, sau đó bấm nút 'BẮT ĐẦU LÀM RÕ NÉT BẰNG AI' để xem kết quả siêu nét tại đây.")
