@@ -132,11 +132,12 @@ def preprocess_image(input_path: str, output_path: str, denoise_strength: float 
         
     cv2.imwrite(output_path, img)
 
-def postprocess_image(input_path: str, output_path: str, mode: str = "Original Enhanced", sharpen_weight: float = 0.5) -> None:
+def postprocess_image(input_path: str, output_path: str, mode: str = "Original Enhanced", sharpen_weight: float = 0.5, digital_print_c: float = 12.0) -> None:
     """
     Applies high-quality post-processing filters after AI super-resolution.
     - Clinical Monochromatic: Converts to high-contrast grayscale (pure black waves on white paper).
     - Waveform Isolation: Attenuates grid colors to make black ECG waves stand out.
+    - Digital Print (Tái tạo bản in): Reconstruction mode that isolates the main wave, preserves red grids, and removes ghosting/smudges.
     - Post-Sharpen: Unsharp mask to make the upscaled image pixel-perfect.
     """
     img = cv2.imread(input_path)
@@ -171,6 +172,41 @@ def postprocess_image(input_path: str, output_path: str, mode: str = "Original E
         
         hsv_new = cv2.merge((h, s_new, v_new))
         img = cv2.cvtColor(hsv_new, cv2.COLOR_HSV2BGR)
+
+    elif mode == "Digital Print (Tái tạo bản in)":
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Adaptive threshold to isolate dark wave (wave is black)
+        # block_size = 31, C = digital_print_c (typically 8 to 18)
+        c_val = int(digital_print_c)
+        wave_mask = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 
+            31, c_val
+        )
+        
+        # Dilate slightly to make lines solid and bold
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        wave_mask = cv2.dilate(wave_mask, kernel, iterations=1)
+        
+        # Convert to HSV to detect the grid
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+        
+        # Detect red/pink grid lines:
+        # Hue is near 0-20 or 155-180 (red), Saturation >= 15, Value > 80 (not black)
+        grid_mask = (((h < 20) | (h > 155)) & (s >= 15) & (v > 80))
+        
+        # Create a clean white background
+        clean_img = np.full_like(img, 255)
+        
+        # Copy the original pink grid onto the white background
+        clean_img[grid_mask] = img[grid_mask]
+        
+        # Draw the main wave in bold pure black
+        clean_img[wave_mask == 255] = [0, 0, 0]
+        
+        img = clean_img
         
     # 2. Post-Sharpening (Unsharp Mask)
     if sharpen_weight > 0:

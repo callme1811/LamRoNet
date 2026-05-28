@@ -108,12 +108,24 @@ with st.sidebar.expander("🩺 Bộ lọc nâng cao (Medical Filters)", expanded
         options=[
             "Original Enhanced",
             "Clinical Monochromatic",
-            "Waveform Isolation"
+            "Waveform Isolation",
+            "Digital Print (Tái tạo bản in)"
         ],
-        index=0,
+        index=3,
         help="• 'Original Enhanced': Giữ màu nguyên bản, tăng bão hòa và độ tương phản lưới giấy.\n"
              "• 'Clinical Monochromatic': Chuyển ảnh xám tương phản cao, làm nổi bật đường sóng trên nền giấy trắng.\n"
-             "• 'Waveform Isolation': Làm mờ nhẹ nền giấy lưới hồng để tập trung tối đa vào đường sóng ECG màu đen."
+             "• 'Waveform Isolation': Làm mờ nhẹ nền giấy lưới hồng để tập trung tối đa vào đường sóng ECG màu đen.\n"
+             "• 'Digital Print (Tái tạo bản in)': Khử triệt để bóng ma (double-image), vết gấp giấy và bóng tối, tái tạo đường sóng đen đậm trên nền giấy trắng grid hồng sạch tinh khiết."
+    )
+    
+    digital_print_c = st.slider(
+        "Độ nhạy khử bóng ma (Digital Print C)",
+        min_value=5.0,
+        max_value=25.0,
+        value=12.0,
+        step=1.0,
+        disabled=(color_mode != "Digital Print (Tái tạo bản in)"),
+        help="Giá trị càng cao sẽ lọc bỏ bóng ma nhẹ/nhiễu nền càng mạnh, nhưng nếu quá cao có thể làm đứt nét các sóng điện tim mảnh. Giá trị khuyên dùng là 10.0 - 15.0."
     )
     
     clahe_clip = st.slider(
@@ -268,7 +280,8 @@ with col_view:
                     input_path=str(output_img_path),
                     output_path=str(output_img_path),
                     mode=color_mode,
-                    sharpen_weight=post_sharpen_weight
+                    sharpen_weight=post_sharpen_weight,
+                    digital_print_c=digital_print_c
                 )
                 
                 t_end = time.time()
