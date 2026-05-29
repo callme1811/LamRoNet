@@ -1,154 +1,211 @@
 # LamRoNet ⚡🩺
-### AI-Powered ECG Super Resolution & Enhancement System
+
+## AI-Powered ECG Paper Rectification, Enhancement & Super Resolution Platform
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge">
   <img src="https://img.shields.io/badge/Streamlit-Web_App-red?style=for-the-badge">
-  <img src="https://img.shields.io/badge/AI-RealESRGAN-green?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Vulkan-GPU_Accelerated-orange?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Platform-Windows_|_Linux-black?style=for-the-badge">
+  <img src="https://img.shields.io/badge/OpenCV-Computer_Vision-green?style=for-the-badge">
+  <img src="https://img.shields.io/badge/AI-RealESRGAN-orange?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Medical-ECG_Processing-purple?style=for-the-badge">
+</p>
+
+<p align="center">
+  Intelligent ECG image enhancement system for correcting perspective distortion, restoring image quality, and improving waveform visibility using computer vision and AI super-resolution.
 </p>
 
 ---
 
 # 📌 Overview
 
-LamRoNet is a high-performance AI ECG enhancement platform designed to restore blurry, noisy, or low-resolution electrocardiogram (ECG) scans using deep learning super-resolution technology.
+LamRoNet is an advanced ECG image processing platform designed to transform low-quality ECG paper photographs into clear, high-resolution, and clinically readable digital images.
 
-Built with Streamlit and powered by Real-ESRGAN NCNN Vulkan, the system delivers fast GPU-accelerated image restoration without requiring heavy AI frameworks such as PyTorch or OpenCV.
+Many ECG records are captured using smartphones under non-ideal conditions, causing:
 
-The application is optimized for:
+- Perspective distortion
+- Motion blur
+- Low resolution
+- Poor lighting
+- Folded paper artifacts
+- Compression noise
 
-- ECG waveform enhancement
-- Medical scan restoration
-- Clinical document sharpening
-- Noise reduction
-- High-resolution ECG visualization
+LamRoNet addresses these issues through a combination of:
+
+- Perspective correction
+- ECG paper flattening
+- Image denoising
+- Adaptive sharpening
+- AI-based super resolution
+- Interactive ECG inspection
+
+The platform is intended for educational, research, telemedicine, and medical digitization workflows.
+
+---
+
+# 🎯 Objectives
+
+The primary goals of LamRoNet are:
+
+- Improve ECG image readability
+- Restore distorted ECG paper photographs
+- Enhance waveform visibility
+- Support ECG digitization workflows
+- Prepare ECG images for downstream AI analysis
+- Facilitate remote consultation and telemedicine
+- Improve archived ECG record quality
 
 ---
 
 # ✨ Core Features
 
-## 🔬 AI ECG Super Resolution
+## 📐 ECG Paper Rectification
 
-LamRoNet uses advanced deep-learning super-resolution models to:
+Transform skewed ECG photographs into a flat top-down view using homography-based perspective correction.
 
-- Upscale ECG scans up to 4x
-- Restore blurry waveform lines
-- Recover faded medical grids
-- Improve text readability
-- Reduce compression artifacts
-- Enhance low-quality smartphone captures
+### Benefits
 
----
-
-## ⚡ High-Speed NCNN Vulkan Runtime
-
-Unlike traditional AI systems:
-
-- No CUDA required
-- Lightweight inference engine
-- Fast startup speed
-- GPU acceleration via Vulkan
-- CPU fallback supported
-- Lower RAM consumption
+- Removes perspective distortion
+- Standardizes ECG layout
+- Preserves waveform geometry
+- Improves measurement consistency
+- Simplifies downstream processing
 
 ---
 
-## 🧠 Multiple AI Models
+## 🎯 Interactive Corner Selection
 
-### `realesrgan-x4plus`
-Best for:
-- Clinical ECG papers
-- Text-heavy scans
-- Realistic restoration
+Users can precisely select:
 
----
+- Top Left Corner
+- Top Right Corner
+- Bottom Right Corner
+- Bottom Left Corner
 
-### `realesrgan-x4plus-anime`
-Best for:
-- Thin waveform lines
-- Noise removal
-- Smoother ECG curves
+for accurate ECG paper extraction.
 
----
+Features include:
 
-### `realesr-animevideov3`
-Best for:
-- CPU-only deployment
-- Weak hardware
-- Fast cloud processing
+- Real-time preview
+- Adjustable coordinates
+- Interactive controls
+- Manual correction support
 
 ---
 
-## 🔍 Pixel-Perfect ECG Inspector
+## 🔄 Rotation Correction
 
-Integrated crop-inspection system allows:
+Before perspective transformation, images can be rotated to ensure proper orientation.
 
-- Zoom-in ECG analysis
-- Before/After comparison
-- Lead-by-lead inspection
-- Pixel-level validation
+Supported modes:
 
-Perfect for analyzing:
-- QRS complexes
-- P waves
-- T waves
-- ST elevation details
+- Auto rotation
+- Manual clockwise rotation
+- Manual counter-clockwise rotation
 
 ---
 
-## ☁️ Smart Cloud Optimization
+## 🧹 Noise Reduction
 
-When running on cloud CPUs:
+Advanced filtering techniques reduce:
 
-- Images automatically resized
-- Width optimized for speed
-- Processing accelerated up to 10x
-- Typical runtime: 5–15 seconds
+- Camera sensor noise
+- JPEG compression artifacts
+- Scanner imperfections
+- Uneven illumination
+- Background interference
 
----
-
-## 🎨 Clinical Dashboard UI
-
-Modern medical-style dashboard featuring:
-
-- Glassmorphism design
-- Clinical dark mode
-- Animated heartbeat effects
-- Real-time indicators
-- Responsive layout
-- Smooth transitions
+while preserving important ECG waveform structures.
 
 ---
 
-# 🏗️ System Architecture
+## ✨ Adaptive Sharpening
+
+Enhances:
+
+- ECG waveforms
+- Medical annotations
+- ECG grid lines
+- Diagnostic markings
+- Printed information
+
+without introducing excessive artifacts.
+
+---
+
+## 🤖 AI Super Resolution
+
+Optional Real-ESRGAN integration provides:
+
+- 4× image upscaling
+- Detail restoration
+- Enhanced readability
+- Better zoom quality
+- Improved visualization of thin ECG lines
+
+Especially useful for:
+
+- Old ECG records
+- Archived scans
+- Low-resolution smartphone captures
+
+---
+
+## 🔍 Before & After Comparison
+
+Visual comparison tools allow users to inspect:
+
+- Original image
+- Flattened image
+- Enhanced image
+- AI-upscaled image
+
+for quality verification.
+
+---
+
+## 💾 Export Enhanced ECG
+
+Processed images can be downloaded for:
+
+- Clinical documentation
+- Research datasets
+- Educational materials
+- Telemedicine systems
+
+---
+
+# 🏗️ Processing Pipeline
 
 ```text
-┌────────────────────┐
-│    User Upload     │
-└─────────┬──────────┘
-          ↓
-┌────────────────────┐
-│ Streamlit Frontend │
-└─────────┬──────────┘
-          ↓
-┌────────────────────┐
-│ Image Preprocessing│
-└─────────┬──────────┘
-          ↓
-┌────────────────────┐
-│ Real-ESRGAN Engine │
-│   NCNN Vulkan AI   │
-└─────────┬──────────┘
-          ↓
-┌────────────────────┐
-│  AI Super Resolution│
-└─────────┬──────────┘
-          ↓
-┌────────────────────┐
-│ Enhanced ECG Output│
-└────────────────────┘
+ECG Photograph
+       │
+       ▼
+Image Upload
+       │
+       ▼
+Rotation Correction
+       │
+       ▼
+Corner Selection
+       │
+       ▼
+Perspective Transformation
+       │
+       ▼
+ECG Paper Flattening
+       │
+       ▼
+Noise Reduction
+       │
+       ▼
+Adaptive Sharpening
+       │
+       ▼
+(Optional)
+AI Super Resolution
+       │
+       ▼
+Enhanced ECG Output
 ```
 
 ---
@@ -158,57 +215,55 @@ Modern medical-style dashboard featuring:
 ```text
 LamRoNet/
 │
-├── bin/                     # AI binaries & model files
-├── temp/                    # Temporary processing images
-├── app.py                   # Main Streamlit application
-├── utils.py                 # AI processing utilities
-├── styles.css               # Clinical dashboard UI
-├── requirements.txt         # Python dependencies
-├── packages.txt             # Linux cloud packages
-├── assets/                  # Screenshots & demo files
+├── app.py
+├── utils.py
+├── styles.css
+│
+├── weights/
+│   └── RealESRGAN_x4plus.pth
+│
+├── bin/
+├── temp/
+│
+├── requirements.txt
+├── packages.txt
+│
 └── README.md
 ```
 
 ---
 
-# ⚙️ System Requirements
+# ⚙️ Technology Stack
 
-## Minimum Requirements
+## Frontend
 
-| Component | Requirement |
-|---|---|
-| Python | 3.9+ |
-| RAM | 4GB |
-| OS | Windows/Linux/macOS |
-| CPU | Dual Core |
+- Streamlit
 
----
+## Computer Vision
 
-## Recommended Requirements
+- OpenCV
+- NumPy
+- Pillow
 
-| Component | Recommended |
-|---|---|
-| Python | 3.10 |
-| RAM | 8GB+ |
-| GPU | Vulkan-supported GPU |
-| Storage | SSD |
-| VRAM | 4GB+ |
+## Deep Learning
 
----
+- Real-ESRGAN
+- PyTorch
+- TorchVision
 
-# 🖥️ GPU Compatibility
+## Image Processing
 
-| GPU Brand | Vulkan Support |
-|---|---|
-| NVIDIA GTX/RTX | ✅ |
-| AMD Radeon | ✅ |
-| Intel Iris/Xe | ✅ |
+- Perspective Transformation
+- Homography Estimation
+- Image Enhancement
+- Denoising
+- Sharpening
 
 ---
 
-# 🚀 Installation Guide
+# 🚀 Installation
 
-## 1️⃣ Clone Repository
+## Clone Repository
 
 ```bash
 git clone https://github.com/callme1811/LamRoNet.git
@@ -217,7 +272,7 @@ cd LamRoNet
 
 ---
 
-## 2️⃣ Create Virtual Environment
+## Create Virtual Environment
 
 ### Windows
 
@@ -235,7 +290,7 @@ source venv/bin/activate
 
 ---
 
-## 3️⃣ Install Dependencies
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -243,13 +298,22 @@ pip install -r requirements.txt
 
 ---
 
-## 4️⃣ Launch Application
+## Verify Installation
+
+```bash
+python --version
+pip list
+```
+
+---
+
+# ▶️ Run Application
 
 ```bash
 streamlit run app.py
 ```
 
-Open browser:
+Open your browser:
 
 ```text
 http://localhost:8501
@@ -257,274 +321,233 @@ http://localhost:8501
 
 ---
 
-# 🐳 Docker Deployment
+# 🖼 Supported Formats
 
-## Build Docker Image
-
-```bash
-docker build -t lamronet .
-```
-
----
-
-## Run Container
-
-```bash
-docker run -p 8501:8501 lamronet
-```
-
----
-
-# ☁️ Cloud Deployment
-
-LamRoNet works well on:
-
-- Streamlit Community Cloud
-- Hugging Face Spaces
-- Railway
-- Render
-- VPS Linux Servers
-
----
-
-# 📦 Python Dependencies
-
-```txt
-streamlit>=1.30.0
-pillow>=10.0.0
-requests>=2.31.0
-```
-
----
-
-# 🖼️ Supported Image Formats
-
-| Format | Supported |
-|---|---|
+| Format | Support |
+|--------|---------|
 | PNG | ✅ |
 | JPG | ✅ |
 | JPEG | ✅ |
 
 ---
 
-# 🧪 Recommended Settings
+# ⚙️ Configuration
 
-| Scenario | Recommended Model |
-|---|---|
-| Blurry ECG scans | realesrgan-x4plus |
-| Thin ECG lines | realesrgan-x4plus-anime |
-| Weak hardware | realesr-animevideov3 |
-| Low VRAM GPU | Lower tile size |
+## Real-ESRGAN Weights
 
----
-
-# ⚡ Performance Benchmarks
-
-| Device | Model | Processing Time |
-|---|---|---|
-| RTX 3060 | x4plus | 2–4 sec |
-| GTX 1650 | anime | 5–8 sec |
-| Intel CPU | animev3 | 10–20 sec |
-
----
-
-# 🔧 Performance Optimization
-
-## Low VRAM Fix
-
-Reduce Tile Size:
-
-| Tile Size | Usage |
-|---|---|
-| 400 | High Quality |
-| 300 | Balanced |
-| 200 | Safe Mode |
-| 100 | Ultra Low VRAM |
-
----
-
-## CPU Optimization
-
-For CPU-only deployment:
-
-- Use `realesr-animevideov3`
-- Resize images before upload
-- Keep width below 1500px
-
----
-
-# 📷 Example Workflow
+Place the model weights inside:
 
 ```text
-Original ECG Scan
-        ↓
-Upload to LamRoNet
-        ↓
-AI Enhancement
-        ↓
-Zoom & Inspection
-        ↓
-Download Enhanced ECG
+weights/
 ```
 
----
-
-# 📸 Screenshots
-
-## Dashboard
+Example:
 
 ```text
-assets/dashboard.png
+weights/
+└── RealESRGAN_x4plus.pth
 ```
 
----
-
-## Before & After
-
-```text
-assets/before_after.png
-```
+If weights are unavailable, LamRoNet will continue using traditional image enhancement methods.
 
 ---
 
-# 🛠️ Troubleshooting
+# 💻 System Requirements
 
-## Vulkan Runtime Missing
+## Minimum Requirements
 
-Install latest GPU drivers:
-
-- NVIDIA Drivers
-- AMD Adrenalin
-- Intel Graphics Drivers
-
----
-
-## Slow Processing
-
-Possible reasons:
-
-- CPU-only mode
-- Large image size
-- High tile size
-- Low available RAM
+| Component | Requirement |
+|----------|-------------|
+| Python | 3.9+ |
+| RAM | 4 GB |
+| CPU | Dual Core |
+| Storage | 1 GB |
 
 ---
 
-## Binary Download Failed
+## Recommended Requirements
 
-Delete:
+| Component | Recommendation |
+|----------|----------------|
+| Python | 3.10+ |
+| RAM | 8 GB+ |
+| GPU | NVIDIA RTX Series |
+| VRAM | 4 GB+ |
+| Storage | SSD |
 
-```text
-bin/
-```
+---
 
-Restart application to re-download binaries.
+# 📊 Typical Use Cases
+
+## 🏥 Clinical Digitization
+
+Convert photographed ECG sheets into clean digital records.
+
+---
+
+## 🌐 Telemedicine
+
+Improve ECG readability before remote consultations.
+
+---
+
+## 🎓 Medical Education
+
+Generate higher-quality ECG examples for teaching and training.
+
+---
+
+## 🤖 AI Research
+
+Preprocess ECG images before:
+
+- Classification
+- Segmentation
+- Feature extraction
+- Deep learning pipelines
+
+---
+
+## 📚 Medical Archives
+
+Restore old ECG records for long-term preservation.
+
+---
+
+# 📈 Performance Benefits
+
+Compared to raw smartphone ECG captures, LamRoNet can:
+
+- Correct geometric distortion
+- Improve waveform visibility
+- Enhance ECG grid clarity
+- Increase image resolution
+- Reduce visual noise
+- Improve readability during zooming
 
 ---
 
 # 🔒 Privacy & Security
 
+LamRoNet is designed with privacy in mind.
+
+### Data Handling
+
 - Images are processed locally
-- No external AI API used
-- No ECG data uploaded to third-party servers
-- Suitable for offline usage
+- No external API required
+- No cloud upload required
+- No patient data transmission
+- Suitable for offline environments
 
 ---
 
-# ⚠️ Medical Disclaimer
+# 🛠 Troubleshooting
 
-This project is intended for:
+## Application Does Not Start
 
-- Educational use
-- Research
-- Image enhancement purposes
+Check dependencies:
 
-AI-generated outputs may not perfectly preserve original medical information.
+```bash
+pip install -r requirements.txt
+```
 
-Always verify ECG interpretations with qualified healthcare professionals.
+Verify Python version:
+
+```bash
+python --version
+```
 
 ---
 
-# 🔮 Future Roadmap
+## Real-ESRGAN Not Working
 
-Planned future features:
+Verify this file exists:
 
-- Batch ECG enhancement
-- DICOM support
+```text
+weights/RealESRGAN_x4plus.pth
+```
+
+If the file is missing, the application will use OpenCV-based enhancement instead.
+
+---
+
+## Slow Processing
+
+Possible causes:
+
+- Large image size
+- CPU-only execution
+- Limited RAM
+- Missing GPU acceleration
+- Large AI upscaling workload
+
+---
+
+# 🗺️ Roadmap
+
+Future planned features:
+
+- Automatic ECG paper detection
+- Automatic corner localization
+- Batch ECG processing
 - PDF ECG restoration
-- OCR medical text extraction
-- ECG segmentation AI
-- Mobile UI optimization
+- OCR patient information extraction
+- DICOM export support
+- ECG waveform segmentation
+- Deep-learning denoising
+- Mobile-friendly interface
 - Multi-language support
-- AI waveform detection
 
 ---
 
-# 🤝 Contribution
+# 🤝 Contributing
 
 Contributions are welcome.
 
-## Steps
-
-1. Fork repository
-2. Create feature branch
-3. Commit changes
-4. Push branch
-5. Open Pull Request
+```text
+Fork Repository
+      ↓
+Create Feature Branch
+      ↓
+Commit Changes
+      ↓
+Push Branch
+      ↓
+Open Pull Request
+```
 
 ---
 
 # 📜 License
 
-Currently no license specified.
-
-Recommended licenses:
-
-- MIT License
-- Apache 2.0
+MIT License
 
 ---
 
-# 🙏 Credits
+# ⚠️ Medical Disclaimer
 
-## Real-ESRGAN
+LamRoNet is intended for:
 
-Developed by:
-- xinntao
+- Research
+- Education
+- Image enhancement
 
-GitHub:
-- https://github.com/xinntao/Real-ESRGAN
+The software does not provide medical diagnosis.
 
----
+Enhanced ECG images should not be used as the sole basis for clinical decision-making.
 
-## NCNN Vulkan Runtime
-
-Powered by:
-- Tencent NCNN Team
+Always consult qualified healthcare professionals and refer to original ECG records when performing medical interpretation.
 
 ---
 
-# ⭐ Support The Project
+# 👨‍💻 Author
 
-If you find this project useful:
+**LamRoNet Development Team**
 
-- ⭐ Star the repository
-- 🍴 Fork the project
-- 🧠 Contribute improvements
-- 📢 Share with others
-
----
-
-# 📬 Contact
-
-For questions or collaboration:
-
-- Open an issue
-- Submit a pull request
-- Contact via GitHub
+Building intelligent tools for ECG digitization, enhancement, and medical image restoration.
 
 ---
 
 <p align="center">
-  <b>LamRoNet — AI ECG Enhancement Powered by Real-ESRGAN ⚡</b>
+  <b>LamRoNet ⚡ — Transforming ECG Photographs into Clinically Readable Digital Records</b>
 </p>
