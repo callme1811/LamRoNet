@@ -9,3 +9,9 @@ transformers
 segmentation-models-pytorch
 matplotlib
 scikit-image
+wfdb
+pyyaml
+scipy
+qrcode
+imutils
+imgaug
