@@ -1,170 +1,121 @@
-import cv2
+﻿import cv2
 import numpy as np
-import os
 
-# PyTorch U-Net Model definition
-try:
-    import torch
-    import torch.nn as nn
-    
-    class DoubleConv(nn.Module):
-        def __init__(self, in_channels, out_channels):
-            super().__init__()
-            self.conv = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=False),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True)
-            )
-        def forward(self, x):
-            return self.conv(x)
 
-    class UNet(nn.Module):
-        def __init__(self, in_channels=3, out_channels=1, features=[64, 128, 256, 512]):
-            super().__init__()
-            self.ups = nn.ModuleList()
-            self.downs = nn.ModuleList()
-            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-            
-            # Downsample
-            for feature in features:
-                self.downs.append(DoubleConv(in_channels, feature))
-                in_channels = feature
-                
-            # Upsample
-            for feature in reversed(features):
-                self.ups.append(
-                    nn.ConvTranspose2d(feature*2, feature, kernel_size=2, stride=2)
-                )
-                self.ups.append(DoubleConv(feature*2, feature))
-                
-            self.bottleneck = DoubleConv(features[-1], features[-1]*2)
-            self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
-            
-        def forward(self, x):
-            skip_connections = []
-            for down in self.downs:
-                x = down(x)
-                skip_connections.append(x)
-                x = self.pool(x)
-                
-            x = self.bottleneck(x)
-            skip_connections = skip_connections[::-1]
-            
-            for idx in range(0, len(self.ups), 2):
-                x = self.ups[idx](x)
-                skip_connection = skip_connections[idx//2]
-                
-                if x.shape != skip_connection.shape:
-                    import torchvision.transforms.functional as TF
-                    x = TF.resize(x, size=skip_connection.shape[2:])
-                    
-                concat_x = torch.cat((skip_connection, x), dim=1)
-                x = self.ups[idx+1](concat_x)
-                
-            return self.final_conv(x)
-except ImportError:
-    UNet = None
+def ensure_rgb(image):
+    if image is None:
+        raise ValueError("Image is None")
 
-def segment_ecg_waveform(image, model_path=None, model_type="OpenCV", C_val=10):
-    """
-    Segments ECG waveforms from paper background using OpenCV adaptive filters, U-Net, or SegFormer.
-    image: RGB numpy array
-    """
-    if model_type == "OpenCV" or not model_path:
-        # High-fidelity OpenCV binarization
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
-        
-        # Gaussian adaptive threshold to segment dark trace lines
-        binary = cv2.adaptiveThreshold(
-            enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, C_val
+    if len(image.shape) == 2:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
+    if image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+
+    return image.copy()
+
+
+def white_balance_gray_world(image_rgb):
+    image = image_rgb.astype(np.float32)
+
+    avg_r = np.mean(image[:, :, 0])
+    avg_g = np.mean(image[:, :, 1])
+    avg_b = np.mean(image[:, :, 2])
+
+    avg_gray = (avg_r + avg_g + avg_b) / 3.0
+
+    image[:, :, 0] *= avg_gray / max(avg_r, 1)
+    image[:, :, 1] *= avg_gray / max(avg_g, 1)
+    image[:, :, 2] *= avg_gray / max(avg_b, 1)
+
+    return np.clip(image, 0, 255).astype(np.uint8)
+
+
+def enhance_ecg_image(
+    image,
+    denoise_strength=3,
+    sharp_strength=1.4,
+    contrast_strength=2.0,
+    gamma=1.0,
+):
+    rgb = ensure_rgb(image)
+
+    denoise_strength = int(denoise_strength)
+    sharp_strength = float(sharp_strength)
+    contrast_strength = float(contrast_strength)
+    gamma = float(gamma)
+
+    # 1. Cân bằng màu giấy để giảm ám vàng/xám
+    balanced = white_balance_gray_world(rgb)
+
+    # 2. Khử nhiễu nhẹ, tránh làm mất nét sóng ECG
+    if denoise_strength > 0:
+        denoised = cv2.fastNlMeansDenoisingColored(
+            balanced,
+            None,
+            denoise_strength,
+            denoise_strength,
+            7,
+            21,
         )
-        
-        # Clean small noise
-        kernel = np.ones((2, 2), np.uint8)
-        cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-        return cleaned
-
-    elif model_type == "U-Net":
-        if UNet is None:
-            raise ImportError("PyTorch is not available.")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"U-Net weights file not found: {model_path}")
-            
-        h_orig, w_orig = image.shape[:2]
-        
-        # Resize to standard size (e.g. 512x512)
-        input_size = 512
-        img_resized = cv2.resize(image, (input_size, input_size))
-        img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).float() / 255.0
-        img_tensor = img_tensor.unsqueeze(0)
-        
-        # Load weights
-        model = UNet(in_channels=3, out_channels=1)
-        model.load_state_dict(torch.load(model_path, map_location="cpu"))
-        model.eval()
-        
-        with torch.no_grad():
-            pred = model(img_tensor)
-            pred = torch.sigmoid(pred)
-            pred_mask = (pred > 0.5).float().squeeze(0).squeeze(0).cpu().numpy()
-            
-        # Resize back
-        pred_mask_orig = cv2.resize((pred_mask * 255).astype(np.uint8), (w_orig, h_orig), interpolation=cv2.INTER_NEAREST)
-        return pred_mask_orig
-
-    elif model_type == "SegFormer":
-        try:
-            from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation
-            from PIL import Image
-        except ImportError:
-            raise ImportError("Transformers library is not available.")
-            
-        pil_img = Image.fromarray(image)
-        processor = SegformerImageProcessor.from_pretrained(model_path)
-        model = SegformerForSemanticSegmentation.from_pretrained(model_path)
-        
-        inputs = processor(images=pil_img, return_tensors="pt")
-        
-        with torch.no_grad():
-            outputs = model(**inputs)
-            logits = outputs.logits
-            upsampled_logits = nn.functional.interpolate(
-                logits,
-                size=pil_img.size[::-1],
-                mode="bilinear",
-                align_corners=False
-            )
-            pred_mask = upsampled_logits.argmax(dim=1)[0].cpu().numpy()
-            
-        return (pred_mask * 255).astype(np.uint8)
-        
-    return None
-
-def apply_waveform_grid_overlay(wave_mask, grid_style="Clinical Pink Grid"):
-    """
-    Overlays a binary wave mask onto a clean background (pink grid or pure white paper).
-    wave_mask: grayscale numpy array
-    """
-    h, w = wave_mask.shape
-    
-    if grid_style == "Clinical Pink Grid":
-        # Create pink grid
-        grid = np.full((h, w, 3), 255, dtype=np.uint8)
-        # 1mm grids (every 10px)
-        grid[::10, :, :] = [230, 230, 255]
-        grid[:, ::10, :] = [230, 230, 255]
-        # 5mm grids (every 50px)
-        grid[::50, :, :] = [180, 180, 255]
-        grid[:, ::50, :] = [180, 180, 255]
     else:
-        # Pure White
-        grid = np.full((h, w, 3), 255, dtype=np.uint8)
-        
-    # Overlay wave mask (255) as black
-    grid[wave_mask > 127] = [0, 0, 0]
-    return grid
+        denoised = balanced
+
+    # 3. Tăng tương phản kênh sáng L trong LAB
+    lab = cv2.cvtColor(denoised, cv2.COLOR_RGB2LAB)
+    l, a, b = cv2.split(lab)
+
+    clahe = cv2.createCLAHE(
+        clipLimit=contrast_strength,
+        tileGridSize=(8, 8),
+    )
+    l2 = clahe.apply(l)
+
+    lab2 = cv2.merge((l2, a, b))
+    contrast = cv2.cvtColor(lab2, cv2.COLOR_LAB2RGB)
+
+    # 4. Gamma correction
+    if gamma != 1.0:
+        inv_gamma = 1.0 / gamma
+        table = np.array(
+            [((i / 255.0) ** inv_gamma) * 255 for i in range(256)]
+        ).astype("uint8")
+        contrast = cv2.LUT(contrast, table)
+
+    # 5. Làm nét unsharp mask
+    blur = cv2.GaussianBlur(contrast, (0, 0), 1.1)
+
+    alpha = sharp_strength
+    beta = -(sharp_strength - 1.0)
+
+    sharp = cv2.addWeighted(contrast, alpha, blur, beta, 0)
+
+    # 6. Ép vùng giấy sáng hơn một chút nhưng không làm cháy nét sóng
+    hsv = cv2.cvtColor(sharp, cv2.COLOR_RGB2HSV)
+    h, s, v = cv2.split(hsv)
+    v = cv2.normalize(v, None, 0, 255, cv2.NORM_MINMAX)
+    hsv2 = cv2.merge((h, s, v))
+    final = cv2.cvtColor(hsv2, cv2.COLOR_HSV2RGB)
+
+    return final
+
+
+def segment_ecg_waveform(
+    image,
+    model_path=None,
+    model_type="OpenCV",
+    C_val=10,
+    model=None,
+):
+    return enhance_ecg_image(
+        image,
+        denoise_strength=3,
+        sharp_strength=1.4,
+    )
+
+
+def apply_waveform_grid_overlay(
+    waveform_mask,
+    grid_style="Clinical Pink Grid",
+):
+    return waveform_mask

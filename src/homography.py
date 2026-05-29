@@ -1,102 +1,103 @@
-import cv2
+﻿import cv2
 import numpy as np
-import os
+
 
 def order_points(pts):
-    """
-    Sorts 4 coordinates in order: Top-Left, Top-Right, Bottom-Right, Bottom-Left.
-    """
-    rect = np.zeros((4, 2), dtype="float32")
-    # Top-left has the smallest sum, bottom-right has the largest sum
+    pts = np.array(pts, dtype=np.float32)
+    rect = np.zeros((4, 2), dtype=np.float32)
+
     s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    
-    # Top-right has the smallest difference, bottom-left has the largest difference
+    rect[0] = pts[np.argmin(s)]      # top-left
+    rect[2] = pts[np.argmax(s)]      # bottom-right
+
     diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
+    rect[1] = pts[np.argmin(diff)]   # top-right
+    rect[3] = pts[np.argmax(diff)]   # bottom-left
+
     return rect
 
+
+def detect_paper_corners(image_or_path, model_path=None):
+    if isinstance(image_or_path, str):
+        image_bgr = cv2.imread(image_or_path)
+        if image_bgr is None:
+            return None
+        image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    else:
+        image = image_or_path.copy()
+
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    edges = cv2.Canny(blur, 50, 150)
+
+    kernel = np.ones((5, 5), np.uint8)
+    edges = cv2.dilate(edges, kernel, iterations=1)
+
+    contours, _ = cv2.findContours(
+        edges,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if len(contours) == 0:
+        return None
+
+    largest = max(contours, key=cv2.contourArea)
+
+    area = cv2.contourArea(largest)
+    h, w = gray.shape[:2]
+
+    # Nếu contour quá nhỏ thì bỏ qua
+    if area < 0.05 * w * h:
+        return None
+
+    rect = cv2.minAreaRect(largest)
+    box = cv2.boxPoints(rect)
+
+    return order_points(box)
+
+
 def four_point_transform(image, pts):
-    """
-    Applies homography transformation to warp perspective using 4 corner points.
-    """
     rect = order_points(pts)
     tl, tr, br, bl = rect
 
-    width_a = np.linalg.norm(br - bl)
-    width_b = np.linalg.norm(tr - tl)
-    max_width = int(max(width_a, width_b))
+    width_top = np.linalg.norm(tr - tl)
+    width_bottom = np.linalg.norm(br - bl)
+    max_width = int(max(width_top, width_bottom))
 
-    height_a = np.linalg.norm(tr - br)
-    height_b = np.linalg.norm(tl - bl)
-    max_height = int(max(height_a, height_b))
+    height_right = np.linalg.norm(br - tr)
+    height_left = np.linalg.norm(bl - tl)
+    max_height = int(max(height_right, height_left))
 
-    dst = np.array([
-        [0, 0],
-        [max_width - 1, 0],
-        [max_width - 1, max_height - 1],
-        [0, max_height - 1]
-    ], dtype="float32")
+    if max_width <= 20 or max_height <= 20:
+        return image
+
+    dst = np.array(
+        [
+            [0, 0],
+            [max_width - 1, 0],
+            [max_width - 1, max_height - 1],
+            [0, max_height - 1],
+        ],
+        dtype=np.float32,
+    )
 
     matrix = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, matrix, (max_width, max_height))
+    warped = cv2.warpPerspective(
+        image,
+        matrix,
+        (max_width, max_height),
+        flags=cv2.INTER_CUBIC
+    )
 
     return warped
 
-def flatten_ecg_paper(image, yolo_results):
-    """
-    Flattens the ECG paper in the image using automatic YOLOv8-seg results.
-    """
-    result = yolo_results[0]
 
-    if result.masks is None:
-        raise ValueError("Không tìm thấy mask tờ ECG.")
+def flatten_ecg_paper(image):
+    corners = detect_paper_corners(image)
 
-    mask = result.masks.xy[0]
-    pts = np.array(mask, dtype=np.float32)
+    if corners is None:
+        return image
 
-    rect = cv2.minAreaRect(pts)
-    box = cv2.boxPoints(rect)
-    box = np.array(box, dtype=np.float32)
-
-    flattened = four_point_transform(image, box)
-
-    return flattened
-
-def detect_paper_corners(img_path, model_path=None):
-    """
-    Uses YOLOv8-seg model to automatically detect the four corners of the ECG paper.
-    Returns 4 coordinate pairs (TL, TR, BR, BL) or None if detection fails.
-    """
-    if not model_path or not os.path.exists(model_path):
-        return None
-        
-    try:
-        from ultralytics import YOLO
-        model = YOLO(model_path)
-        results = model(img_path)
-        result = results[0]
-        
-        if result.masks is None or len(result.masks) == 0:
-            return None
-            
-        points = result.masks.xy[0]
-        if len(points) < 4:
-            return None
-            
-        contour = np.array(points, dtype=np.int32)
-        peri = cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-        
-        if len(approx) == 4:
-            pts = approx.reshape(4, 2)
-        else:
-            hull = cv2.convexHull(contour)
-            pts = hull.reshape(-1, 2)
-            
-        return order_points(pts)
-    except Exception as e:
-        print(f"YOLOv8-seg corner detection error: {e}")
-        return None
+    return four_point_transform(image, corners)

@@ -1,17 +1,6 @@
-# Local temporary images (uploads & enhanced results)
-temp/
-
-# Python cache files
 __pycache__/
+temp/
+.env
 *.pyc
-
-# Streamlit config/cache
-.streamlit/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Local virtual environment
-venv/
-
+*.pyo
+*.pyd
