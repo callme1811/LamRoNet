@@ -4,7 +4,7 @@ import PyPDF2
 try:
     from .utils import get_number_of_pages, remove_fields
 except ImportError:
-    from utils import get_number_of_pages, remove_fields
+    from src.homography import get_number_of_pages, remove_fields
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
